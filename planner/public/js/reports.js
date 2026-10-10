@@ -128,7 +128,7 @@ ${R.keywords.length ? `<div class="kw-wrap"><table class="kw"><thead><tr><th>Key
 
     return `<div class="vhead"><div><h1>SEO reporting</h1><p>Explore Search Console, GA4 and Ahrefs data without leaving the work plan.</p></div>
 <div class="rpt-ctl"><label class="f"><span class="label">Site</span><input type="text" id="rpt-site" value="${esc(R.site)}"></label>
-<label class="f"><span class="label">Month</span><input type="month" id="rpt-month" value="${month}"></label></div></div>
+<div class="f"><span class="label">Month</span><div class="rpt-actions"><input type="month" id="rpt-month" value="${month}"><button class="btn sm" type="button" id="rpt-month-view">View month</button></div></div></div></div>
 <div class="report-tabs" role="tablist">${Object.entries(tabNames).map(([key, name]) => `<button type="button" role="tab" aria-selected="${ui.rptTab === key}" class="${ui.rptTab === key ? 'on' : ''}" data-rpt-tab="${key}">${esc(name)}</button>`).join('')}</div>
 ${ui.rptTab === 'overview' ? overview : detailPanel(ui.rptTab, month)}`;
   }

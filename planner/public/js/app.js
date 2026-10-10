@@ -181,9 +181,12 @@ ${u.email === St.user.email ? '<span class="urm"></span>' : `<button class="ibtn
     const rptLoad = t.closest('[data-rpt-load]'); if (rptLoad) return loadReportDetail(rptLoad.dataset.rptLoad, true);
     const rptCsv = t.closest('[data-rpt-csv]'); if (rptCsv) return window.Reports.csv(rptCsv.dataset.rptCsv, ui.rptMonth);
     if (t.closest('#rpt-overview-csv')) return window.Reports.overviewCsv(St.state, ui.rptMonth);
+    if (t.closest('#rpt-month-view')) { selectReportMonth($('#rpt-month')?.value); render(); return; }
     if (t.closest('#rpt-toggle')) { ui.rptEdit = !ui.rptEdit; return render(); }
     if (t.closest('#rpt-sync')) {
       const button = t.closest('#rpt-sync'), status = $('#rpt-sync-status');
+      const visibleMonth = $('#rpt-month')?.value;
+      if (/^\d{4}-\d{2}$/.test(visibleMonth) && visibleMonth !== ui.rptMonth) { ui.rptMonth = visibleMonth; persist(); }
       const reportMonth = ui.rptMonth;
       let reportLabel = new Date(`${reportMonth}-01T12:00:00`).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
       let pullSucceeded = false;
