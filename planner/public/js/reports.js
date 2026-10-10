@@ -46,12 +46,30 @@ window.Reports = (() => {
     return `<span class="dl ${good ? 'up' : 'down'}">${diff > 0 ? '▲' : '▼'} ${amt}${pct}</span>`;
   }
 
-  function spark(values, lowerBetter) {
-    const pts = values.map((v, i) => [i, v]).filter(p => p[1] !== undefined);
-    if (pts.length < 2) return '<svg class="spark" viewBox="0 0 100 28"></svg>';
-    const ys = pts.map(p => p[1]), lo = Math.min(...ys), hi = Math.max(...ys), span = hi - lo || 1, w = values.length - 1 || 1;
-    const xy = pts.map(([i, v]) => `${(i / w * 100).toFixed(1)},${(lowerBetter ? 3 + (v - lo) / span * 22 : 25 - (v - lo) / span * 22).toFixed(1)}`);
-    return `<svg class="spark" viewBox="0 0 100 28" preserveAspectRatio="none"><polyline points="${xy.join(' ')}" fill="none" stroke="currentColor" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>`;
+  const compact = value => Math.abs(value) >= 1e6 ? `${(value / 1e6).toFixed(value >= 1e7 ? 0 : 1)}M` : Math.abs(value) >= 1e3 ? `${(value / 1e3).toFixed(value >= 1e4 ? 0 : 1)}k` : Number(value).toLocaleString('en-US', { maximumFractionDigits: 1 });
+
+  function trendChart(metric, months, reports) {
+    const values = months.map(month => (reports.months[month] || {})[metric.key]);
+    const points = values.map((value, index) => value === undefined ? null : { value: Number(value), index, month: months[index] }).filter(Boolean);
+    if (points.length < 2) return '';
+    const width = 360, height = 166, left = 54, right = 18, top = 18, bottom = 34;
+    const rawMin = Math.min(...points.map(point => point.value)), rawMax = Math.max(...points.map(point => point.value));
+    const yMin = metric.lowerBetter ? Math.max(0, rawMin - Math.max((rawMax - rawMin) * .2, rawMin * .05)) : 0;
+    const yMax = rawMax === yMin ? yMin + 1 : rawMax + Math.max((rawMax - yMin) * .1, 1);
+    const x = index => left + index * (width - left - right) / Math.max(months.length - 1, 1);
+    const y = value => top + (yMax - value) * (height - top - bottom) / (yMax - yMin);
+    const ticks = [yMax, (yMax + yMin) / 2, yMin];
+    const line = points.map(point => `${x(point.index).toFixed(1)},${y(point.value).toFixed(1)}`).join(' ');
+    const last = points[points.length - 1];
+    const desc = points.map(point => `${monthLabel(point.month)} ${fmtNum(point.value, metric.unit)}`).join(', ');
+    return `<article class="trend"><div class="trend-h"><div><b>${esc(metric.label)}</b><span>${esc(metric.source)}</span></div><strong>${fmtNum(last.value, metric.unit)}</strong></div>
+<svg class="trend-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="${esc(metric.label)} trend: ${esc(desc)}"><title>${esc(metric.label)} · six-month trend</title>
+${ticks.map(tick => `<line class="trend-grid" x1="${left}" x2="${width - right}" y1="${y(tick).toFixed(1)}" y2="${y(tick).toFixed(1)}"/><text class="trend-y" x="${left - 8}" y="${(y(tick) + 4).toFixed(1)}">${esc(compact(tick))}${metric.unit || ''}</text>`).join('')}
+<line class="trend-axis" x1="${left}" x2="${width - right}" y1="${height - bottom}" y2="${height - bottom}"/>
+<polyline class="trend-line" points="${line}"/>
+${points.map(point => `<circle class="trend-dot" cx="${x(point.index).toFixed(1)}" cy="${y(point.value).toFixed(1)}" r="4"><title>${esc(monthLabel(point.month))}: ${esc(fmtNum(point.value, metric.unit))}</title></circle>`).join('')}
+${months.map((month, index) => `<text class="trend-x" x="${x(index).toFixed(1)}" y="${height - 10}">${esc(monthLabel(month).split(' ')[0])}</text>`).join('')}
+</svg></article>`;
   }
 
   function tools(site) {
@@ -90,8 +108,8 @@ window.Reports = (() => {
 
     const cards = C.SEO_METRICS.map(m => `<div class="kpi">
 <div class="kpi-h"><span class="label">${esc(m.label)}</span><span class="src">${esc(m.source)}</span></div>
-<div class="kpi-v"><b>${fmtNum(row[m.key], m.unit)}</b>${delta(row[m.key], prow[m.key], m.lowerBetter, m.unit)}</div>
-<div class="kpi-s">${spark(months6.map(x => (R.months[x] || {})[m.key]), m.lowerBetter)}</div></div>`).join('');
+<div class="kpi-v"><b>${fmtNum(row[m.key], m.unit)}</b>${delta(row[m.key], prow[m.key], m.lowerBetter, m.unit)}</div></div>`).join('');
+    const trends = C.SEO_METRICS.map(metric => trendChart(metric, months6, R)).filter(Boolean).join('');
 
     const entry = C.SEO_METRICS.map(m => `<label class="f"><span class="label">${esc(m.label)}${m.unit ? ` (${m.unit})` : ''}</span>
 <input type="number" step="${m.int ? '1' : 'any'}" min="0" inputmode="${m.int ? 'numeric' : 'decimal'}" data-rpt="${m.key}" value="${row[m.key] === undefined ? '' : row[m.key]}" placeholder="${prow[m.key] === undefined ? '' : 'Last month: ' + prow[m.key]}"></label>`).join('');
@@ -110,6 +128,8 @@ ${kmonths.map(x => x === month
     const overview = `<div class="rpt">
 <section class="panel"><div class="panel-h"><h2>Scorecard · ${esc(monthLabel(month))}</h2><span class="muted">${filled} of ${C.SEO_METRICS.length} entered · compared with ${esc(monthLabel(prev))}</span></div>
 <div class="kpis">${cards}</div></section>
+
+${trends ? `<section class="panel"><div class="panel-h"><div><h2>Six-month trends</h2><span class="muted">Monthly totals through ${esc(monthLabel(month))} · hover a point for its exact value</span></div></div><div class="trends">${trends}</div></section>` : ''}
 
 <div class="rpt-2">
 <section class="panel"><div class="panel-h"><h2>Enter ${esc(monthLabel(month))} figures</h2><div class="rpt-actions"><button class="btn primary sm" type="button" id="rpt-sync">Pull ${esc(monthLabel(month))} data</button><button class="btn sm" type="button" id="rpt-toggle">${ui.rptEdit ? 'Hide' : 'Edit figures'}</button></div></div>
