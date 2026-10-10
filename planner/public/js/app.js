@@ -176,7 +176,8 @@ ${u.email === St.user.email ? '<span class="urm"></span>' : `<button class="ibtn
     if (t.closest('#rpt-toggle')) { ui.rptEdit = !ui.rptEdit; return render(); }
     if (t.closest('#rpt-sync')) {
       const button = t.closest('#rpt-sync'), status = $('#rpt-sync-status');
-      const reportMonth = ui.rptMonth, reportLabel = new Date(`${reportMonth}-01T12:00:00`).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      const reportMonth = ui.rptMonth;
+      let reportLabel = new Date(`${reportMonth}-01T12:00:00`).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
       let pullSucceeded = false;
       button.disabled = true; button.textContent = 'Pulling…'; status.textContent = `Loading ${reportLabel} from GA4, Search Console and Ahrefs…`;
       fetch('/api/google-report?month=' + encodeURIComponent(reportMonth), { cache: 'no-store' }).then(async r => {
@@ -191,6 +192,7 @@ ${u.email === St.user.email ? '<span class="urm"></span>' : `<button class="ibtn
         if (!r.ok) throw new Error(data.error || 'Google sync failed');
         St.dispatch(Object.entries(data.values).map(([key, value]) => ({ t: 'rpt-metric', month: reportMonth, key, value })));
         pullSucceeded = true;
+        if (data.partial && data.throughDate) reportLabel += ` through ${new Date(`${data.throughDate}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
         if (ui.rptMonth === reportMonth) render();
       }).catch(err => { status.textContent = err.message; status.classList.add('auth-err'); }).finally(() => {
         const current = $('#rpt-sync'); if (current) { current.disabled = false; current.textContent = `Pull ${reportLabel} data`; }

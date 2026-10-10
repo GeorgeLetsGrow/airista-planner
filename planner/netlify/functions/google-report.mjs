@@ -8,8 +8,12 @@ function monthRange(month) {
   if (!/^\d{4}-\d{2}$/.test(month)) throw new Error("Choose a valid month.");
   const [year, number] = month.split("-").map(Number);
   if (number < 1 || number > 12) throw new Error("Choose a valid month.");
-  const end = new Date(Date.UTC(year, number, 0));
-  return { startDate: `${month}-01`, endDate: end.toISOString().slice(0, 10) };
+  const startDate = `${month}-01`;
+  const monthEnd = new Date(Date.UTC(year, number, 0)).toISOString().slice(0, 10);
+  const latest = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  if (startDate > latest) throw new Error("This month has not started producing report data yet.");
+  const endDate = monthEnd < latest ? monthEnd : latest;
+  return { startDate, endDate, partial: endDate < monthEnd };
 }
 
 async function googleFetch(client, url, body) {
@@ -56,7 +60,7 @@ export default async (req) => {
     const ahrefsTarget = env("AHREFS_TARGET").trim() || "airistaflow.com";
     const [ga4, search, backlinks, keywordHistory] = await Promise.all([
       googleFetch(client, `https://analyticsdata.googleapis.com/v1beta/properties/${encodeURIComponent(propertyId)}:runReport`, {
-        dateRanges: [range],
+        dateRanges: [{ startDate: range.startDate, endDate: range.endDate }],
         metrics: [{ name: "sessions" }, { name: "keyEvents" }],
         dimensionFilter: { filter: { fieldName: "sessionDefaultChannelGroup", stringFilter: { matchType: "EXACT", value: "Organic Search" } } },
       }),
@@ -85,6 +89,8 @@ export default async (req) => {
     const sc = search.rows?.[0] || {};
     return json({
       month,
+      throughDate: range.endDate,
+      partial: range.partial,
       values: {
         clicks: sc.clicks ?? 0,
         impr: sc.impressions ?? 0,
