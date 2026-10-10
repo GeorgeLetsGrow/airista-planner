@@ -1,0 +1,17 @@
+:root{
+--space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:24px;--space-6:32px;--space-7:36px;--space-8:56px;--space-9:64px;--space-10:72px;--space-11:88px;
+--section-y:112px;--section-y-mobile:80px;--wrap-max:1200px;--wrap-pad:32px;--page-pad:56px;
+--radius-xs:3px;--radius-sm:6px;--radius-btn:8px;--radius-cta:9px;--radius-md:10px;--radius-item:11px;--radius-tile:12px;--radius-pop:14px;--radius-card:16px;--radius-panel:20px;--radius-pill:999px;
+--shadow-card:0 18px 44px -26px rgba(8,14,32,.3);
+--shadow-pop:0 14px 34px -20px rgba(8,14,32,.35);
+--shadow-item:0 6px 18px -10px rgba(8,14,32,.25);
+--shadow-lift:0 14px 28px -16px rgba(8,14,32,.35);
+--shadow-dropdown:0 18px 40px -12px rgba(15,26,56,.3);
+--shadow-frame:0 40px 90px -40px rgba(8,14,32,.4);
+--shadow-float:0 30px 70px -24px rgba(8,14,32,.6),0 2px 6px rgba(8,14,32,.2);
+--shadow-cta:0 16px 34px -12px rgba(240,106,42,.53);
+--shadow-cta-hover:0 22px 46px -14px rgba(240,106,42,.75);
+--ring-focus:0 0 0 3px rgba(240,106,42,.13);
+--ease-out:cubic-bezier(.22,.61,.36,1);/* @kind other */
+--dur-fast:150ms;/* @kind other */--dur-base:180ms;/* @kind other */--dur-med:300ms;/* @kind other */--dur-enter:340ms;/* @kind other */--dur-reveal:600ms;/* @kind other */
+}

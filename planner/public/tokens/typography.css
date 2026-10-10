@@ -1,0 +1,22 @@
+:root{
+--font-sans:"Inter Tight","Helvetica Neue",Helvetica,Arial,sans-serif;
+--font-mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+--fw-regular:400;/* @kind font */--fw-medium:500;/* @kind font */--fw-semibold:600;/* @kind font */--fw-bold:700;/* @kind font */
+--fs-display:56px;/* @kind font */--lh-display:1.02;/* @kind font */
+--fs-h1:46px;/* @kind font */--lh-h1:1.06;/* @kind font */--ls-h1:-.03em;/* @kind font */
+--fs-h2:clamp(32px,4vw,46px);/* @kind font */--lh-h2:1.06;/* @kind font */--ls-h2:-.025em;/* @kind font */
+--fs-h3:28px;/* @kind font */--ls-h3:-.02em;/* @kind font */
+--fs-h4:24px;/* @kind font */
+--fs-title:22px;/* @kind font */
+--fs-quote:clamp(24px,2.6vw,34px);/* @kind font */--lh-quote:1.32;/* @kind font */
+--fs-card-title:17px;/* @kind font */
+--fs-lead:18px;/* @kind font */--lh-lead:1.6;/* @kind font */
+--fs-body-lg:16.5px;/* @kind font */
+--fs-body:15px;/* @kind font */--lh-body:1.6;/* @kind font */
+--fs-small:14px;/* @kind font */
+--fs-caption:13px;/* @kind font */
+--fs-micro:12.5px;/* @kind font */
+--fs-eyebrow:12px;/* @kind font */--ls-eyebrow:.14em;/* @kind font */
+--fs-label:11px;/* @kind font */--ls-label:.08em;/* @kind font */
+--ls-tight:-.01em;/* @kind font */
+}

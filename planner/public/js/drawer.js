@@ -1,0 +1,34 @@
+window.Drawer = (() => {
+  const C = window.PlannerCore, U = window.U, V = window.Views, { esc } = U;
+
+  function render(state, ui) {
+    const it = state.items.find(i => i.id === ui.drawerId);
+    if (!it) return '';
+    const lane = state.items.filter(i => i.lane === it.lane).sort((a, b) => a.order - b.order), idx = lane.indexOf(it);
+    const seg = (f, opts, cur) => `<div class="seg" data-seg="${f}">${opts.map(([v, l]) => `<button type="button" data-v="${v}" class="${String(cur) === String(v) ? 'on' : ''}">${l}</button>`).join('')}</div>`;
+    const people = [...new Set([...window.Store.people, ...it.owner])];
+    const ev = it.evidence;
+    return `<div class="dr-head"><div><span class="label" style="color:var(--orange-600)">${esc(V.wsName(it.ws))}</span><h2>${esc(it.title)}</h2></div><button class="ibtn" type="button" data-close aria-label="Close">${U.ICON.close}</button></div>
+<div class="dr-body">
+<div class="fgrid">
+<div class="f full"><span class="label">Type</span>${seg('type', Object.entries(C.TYPES), C.typeOf(it))}</div>
+<label class="f"><span class="label">Status</span><select data-f="status">${Object.entries(C.STATUS).map(([k, l]) => `<option value="${k}" ${k === it.status ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+<div class="f"><span class="label">Priority</span>${seg('priority', Object.entries(C.PRIORITY), it.priority)}</div>
+<div class="f full"><span class="label">Lane</span><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">${seg('lane', Object.entries(C.LANES), it.lane)}<span class="rankrow">#${idx + 1} of ${lane.length}<button class="ibtn" type="button" data-rank="up" ${idx === 0 ? 'disabled' : ''} aria-label="Move up">↑</button><button class="ibtn" type="button" data-rank="down" ${idx === lane.length - 1 ? 'disabled' : ''} aria-label="Move down">↓</button></span></div></div>
+<div class="f full"><span class="label">Owner</span><div class="ownchips">${people.map(p => `<button type="button" data-owner="${esc(p)}" class="${it.owner.includes(p) ? 'on' : ''}">${U.av(p)}${esc(p)}</button>`).join('')}</div></div>
+<label class="f"><span class="label">Target date</span><input type="date" data-f="due" value="${esc(it.due)}"></label>
+<div class="f"><span class="label">Date</span>${seg('agreed', [['0', 'Proposed'], ['1', 'Agreed']], it.agreed ? 1 : 0)}</div>
+<label class="f full"><span class="label">Blocker</span><textarea data-f="blocker" rows="2" placeholder="None">${esc(it.blocker)}</textarea></label>
+<label class="f full"><span class="label">Completion evidence</span><input type="text" data-f="evidence" value="${esc(ev)}" placeholder="Link or note showing implementation, delivery or publication">${U.isUrl(ev) ? `<a href="${esc(ev)}" target="_blank" rel="noopener" style="font-size:12.5px">Open evidence →</a>` : ''}</label>
+</div>
+${it.status === 'co' && !ev ? '<div class="warnbox">Marked complete without evidence. Add a link or note showing implementation, delivery or publication.</div>' : ''}
+<div class="ro"><span class="label">Next action</span><p>${esc(it.next)}</p>${it.result ? `<span class="label" style="display:block;margin-top:10px">Result</span><p>${esc(it.result)}</p>` : ''}${it.cadence ? `<p class="muted" style="margin-top:8px;font-size:12px">Recurring: ${esc(it.cadence)}</p>` : ''}</div>
+<div><div class="dtabs"><button type="button" data-tab="comments" class="${ui.tab === 'comments' ? 'on' : ''}">Comments · ${it.comments.length}</button><button type="button" data-tab="history" class="${ui.tab === 'history' ? 'on' : ''}">History · ${it.history.length}</button></div>
+<div style="padding-top:16px">${ui.tab === 'history'
+      ? `<div class="hist">${it.history.map(h => `<div><b>${esc(h.by)}</b> ${V.histText(h)}<span class="t">${U.fmtTime(h.at)}</span></div>`).join('')}</div>`
+      : `<div class="cmlist">${it.comments.map(c => `<div class="cm">${U.av(c.by)}<div><div class="who-l"><b>${esc(c.by)}</b>${U.ago(c.at)}</div><p>${esc(c.text)}</p></div></div>`).join('') || '<p class="muted">No comments yet.</p>'}
+<form class="cmform" id="cmform"><textarea id="cm-text" rows="3" placeholder="Add a comment as ${esc(window.Store.me || 'you')}"></textarea><button class="btn primary sm" type="submit">Comment</button></form></div>`}</div></div>
+</div>`;
+  }
+  return { render };
+})();

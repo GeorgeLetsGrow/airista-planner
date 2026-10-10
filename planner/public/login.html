@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sign in · AiRISTA Work Plan</title>
+<link rel="icon" href="/assets/airista-logo.png">
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body class="auth-page">
+<main class="auth-wrap">
+<div class="auth-card">
+<div class="brand"><img src="/assets/airista-logo.png" alt="AiRISTA"><div><b>Work Plan</b><span>AiRISTA Flow · LetsGrow LLC</span></div></div>
+
+<form id="login-form" class="auth-form" novalidate>
+<h1>Sign in</h1>
+<label class="f"><span class="label">Email</span><input type="email" id="login-email" autocomplete="username" required></label>
+<label class="f"><span class="label">Password</span><input type="password" id="login-password" autocomplete="current-password" required></label>
+<p class="auth-err" id="login-err" role="alert" hidden></p>
+<button class="btn primary" type="submit">Sign in</button>
+<p class="muted auth-help">Need an account or forgot your password? Ask an administrator for a setup link.</p>
+</form>
+
+<form id="setup-form" class="auth-form" novalidate hidden>
+<h1 id="setup-title">Set your password</h1>
+<p class="muted" id="setup-who"></p>
+<input type="email" id="setup-email" autocomplete="username" hidden>
+<label class="f"><span class="label">New password</span><input type="password" id="setup-password" autocomplete="new-password" minlength="10" required></label>
+<label class="f"><span class="label">Confirm password</span><input type="password" id="setup-confirm" autocomplete="new-password" minlength="10" required></label>
+<p class="muted auth-help">At least 10 characters.</p>
+<p class="auth-err" id="setup-err" role="alert" hidden></p>
+<button class="btn primary" type="submit">Save password and sign in</button>
+</form>
+</div>
+</main>
+<script src="/js/login.js"></script>
+</body>
+</html>
