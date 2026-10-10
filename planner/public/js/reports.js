@@ -32,7 +32,8 @@ window.Reports = (() => {
     const saved = data.savedAt ? new Date(data.savedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '';
     return `<section class="panel rpt-detail"><div class="panel-h"><div><h2>${esc(title)}</h2><span class="muted">${rows.length} rows · ${esc(monthLabel(month))}${saved ? ` · saved ${esc(saved)}` : ''}</span></div><div class="rpt-actions"><button class="btn sm" type="button" data-rpt-load="${tab}">Refresh snapshot</button><button class="btn sm" type="button" data-rpt-csv="${tab}">Export CSV</button></div></div>
 <div class="rpt-find"><input type="search" id="rpt-q" placeholder="Search this report" aria-label="Search this report"><span class="muted" id="rpt-count">${rows.length} shown</span></div>
-<div class="rpt-table-wrap"><table class="rpt-table"><thead><tr>${columns.map(c => `<th class="${numeric.has(c) ? 'num' : ''}">${esc(labels[c] || c)}</th>`).join('')}</tr></thead><tbody>${rows.map(row => `<tr data-report-row data-search="${esc(columns.map(c => row[c] || '').join(' ').toLowerCase())}">${columns.map(c => `<td class="${numeric.has(c) ? 'num' : ''}">${cell(row[c], c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div></section>`;
+<div class="rpt-table-wrap"><table class="rpt-table"><thead><tr>${columns.map(c => `<th class="${numeric.has(c) ? 'num' : ''}">${esc(labels[c] || c)}</th>`).join('')}</tr></thead><tbody>${rows.map(row => `<tr data-report-row data-search="${esc(columns.map(c => row[c] || '').join(' ').toLowerCase())}">${columns.map(c => `<td class="${numeric.has(c) ? 'num' : ''}">${cell(row[c], c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>
+<div class="rpt-actions" style="justify-content:flex-end;margin-top:16px"><button class="btn sm" type="button" data-rpt-csv="${tab}">Export ${esc(title)} CSV</button></div></section>`;
   }
 
   function delta(cur, prev, lowerBetter, unit) {
@@ -110,8 +111,8 @@ ${kmonths.map(x => x === month
 <div class="kpis">${cards}</div></section>
 
 <div class="rpt-2">
-<section class="panel"><div class="panel-h"><h2>Enter ${esc(monthLabel(month))} figures</h2><div class="rpt-actions"><button class="btn sm" type="button" id="rpt-sync">Sync connected data</button><button class="btn sm" type="button" id="rpt-toggle">${ui.rptEdit ? 'Hide' : 'Edit figures'}</button></div></div>
-<p class="rpt-sync-status muted" id="rpt-sync-status">Pulls search performance from Search Console, organic sessions and key events from GA4, plus top-10 keywords and live referring domains from Ahrefs.</p>
+<section class="panel"><div class="panel-h"><h2>Enter ${esc(monthLabel(month))} figures</h2><div class="rpt-actions"><button class="btn primary sm" type="button" id="rpt-sync">Pull ${esc(monthLabel(month))} data</button><button class="btn sm" type="button" id="rpt-toggle">${ui.rptEdit ? 'Hide' : 'Edit figures'}</button></div></div>
+<p class="rpt-sync-status muted" id="rpt-sync-status">Pulls and saves this month's Search Console, GA4 and Ahrefs totals. Existing figures for this month will be replaced.</p>
 ${ui.rptEdit ? `<div class="fgrid">${entry}</div><p class="muted" style="font-size:12px">Saves when you leave a field. Leave a field blank if the number isn't available yet.</p>` : `<p class="muted">Use <b>Edit figures</b> to type this month's numbers from each source. Changes are logged in Daily check-in.</p>`}
 </section>
 <section class="panel"><div class="panel-h"><h2>SEO tools</h2><span class="muted">${esc(host(R.site))}</span></div>${tools(R.site)}</section>
@@ -121,6 +122,7 @@ ${ui.rptEdit ? `<div class="fgrid">${entry}</div><p class="muted" style="font-si
 ${R.keywords.length ? `<div class="kw-wrap"><table class="kw"><thead><tr><th>Keyword</th>${kmonths.map(x => `<th class="num">${esc(monthLabel(x))}</th>`).join('')}<th>Change</th><th></th></tr></thead><tbody>${kw}</tbody></table></div>` : '<p class="muted">No keywords yet. Add the terms you want to track.</p>'}
 <form class="kw-add" id="kw-add"><input type="text" id="kw-new" placeholder="Keyword, e.g. RTLS for hospitals" maxlength="120"><input type="text" id="kw-new-url" placeholder="Target page (optional)" maxlength="300"><button class="btn primary" type="submit">Add keyword</button></form>
 </section>
+<div class="rpt-actions" style="justify-content:flex-end"><button class="btn" type="button" id="rpt-overview-csv">Export ${esc(monthLabel(month))} scorecard CSV</button></div>
 </div>`;
 
     return `<div class="vhead"><div><h1>SEO reporting</h1><p>Explore Search Console, GA4 and Ahrefs data without leaving the work plan.</p></div>
@@ -139,5 +141,15 @@ ${ui.rptTab === 'overview' ? overview : detailPanel(ui.rptTab, month)}`;
     const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'text/csv' })); a.download = `airista-${tab}-${month}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   }
 
-  return { render, prevMonth, setDetail, getDetail, csv };
+  function overviewCsv(state, month) {
+    const R = C.ensureReports(state), row = R.months[month] || {};
+    const quote = value => `"${String(value ?? '').replaceAll('"', '""')}"`;
+    const lines = [['Section', 'Metric', 'Source', 'Month', 'Value']];
+    C.SEO_METRICS.forEach(metric => lines.push(['Scorecard', metric.label, metric.source, month, row[metric.key] ?? '']));
+    R.keywords.forEach(keyword => lines.push(['Keyword ranking', keyword.keyword, keyword.url || 'Ahrefs', month, keyword.pos?.[month] ?? '']));
+    const text = lines.map(line => line.map(quote).join(',')).join('\r\n');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'text/csv' })); a.download = `airista-scorecard-${month}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  return { render, prevMonth, setDetail, getDetail, csv, overviewCsv };
 })();

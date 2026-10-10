@@ -172,11 +172,14 @@ ${u.email === St.user.email ? '<span class="urm"></span>' : `<button class="ibtn
     const rptTab = t.closest('[data-rpt-tab]'); if (rptTab) { ui.rptTab = rptTab.dataset.rptTab; persist(); render(); if (ui.rptTab !== 'overview') loadReportDetail(ui.rptTab); return; }
     const rptLoad = t.closest('[data-rpt-load]'); if (rptLoad) return loadReportDetail(rptLoad.dataset.rptLoad, true);
     const rptCsv = t.closest('[data-rpt-csv]'); if (rptCsv) return window.Reports.csv(rptCsv.dataset.rptCsv, ui.rptMonth);
+    if (t.closest('#rpt-overview-csv')) return window.Reports.overviewCsv(St.state, ui.rptMonth);
     if (t.closest('#rpt-toggle')) { ui.rptEdit = !ui.rptEdit; return render(); }
     if (t.closest('#rpt-sync')) {
       const button = t.closest('#rpt-sync'), status = $('#rpt-sync-status');
-      button.disabled = true; button.textContent = 'Syncing…'; status.textContent = 'Loading GA4, Search Console and Ahrefs…';
-      fetch('/api/google-report?month=' + encodeURIComponent(ui.rptMonth), { cache: 'no-store' }).then(async r => {
+      const reportMonth = ui.rptMonth, reportLabel = new Date(`${reportMonth}-01T12:00:00`).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      let pullSucceeded = false;
+      button.disabled = true; button.textContent = 'Pulling…'; status.textContent = `Loading ${reportLabel} from GA4, Search Console and Ahrefs…`;
+      fetch('/api/google-report?month=' + encodeURIComponent(reportMonth), { cache: 'no-store' }).then(async r => {
         const data = await r.json().catch(() => ({}));
         if (r.status === 401) return location.replace('/login?next=' + encodeURIComponent(location.pathname + location.hash));
         if (data.needsConnection) {
@@ -186,9 +189,13 @@ ${u.email === St.user.email ? '<span class="urm"></span>' : `<button class="ibtn
           location.href = auth.url; return;
         }
         if (!r.ok) throw new Error(data.error || 'Google sync failed');
-        St.dispatch(Object.entries(data.values).map(([key, value]) => ({ t: 'rpt-metric', month: ui.rptMonth, key, value })));
-        status.textContent = `Connected data synced. ${Object.keys(data.values).length} imported figures were saved to this month.`;
-      }).catch(err => { status.textContent = err.message; status.classList.add('auth-err'); }).finally(() => { button.disabled = false; button.textContent = 'Sync connected data'; });
+        St.dispatch(Object.entries(data.values).map(([key, value]) => ({ t: 'rpt-metric', month: reportMonth, key, value })));
+        pullSucceeded = true;
+        if (ui.rptMonth === reportMonth) render();
+      }).catch(err => { status.textContent = err.message; status.classList.add('auth-err'); }).finally(() => {
+        const current = $('#rpt-sync'); if (current) { current.disabled = false; current.textContent = `Pull ${reportLabel} data`; }
+        const currentStatus = $('#rpt-sync-status'); if (pullSucceeded && currentStatus && ui.rptMonth === reportMonth) currentStatus.textContent = `${reportLabel} data was pulled and saved to the scorecard.`;
+      });
       return;
     }
     const kd = t.closest('[data-kwdel]'); if (kd) { const id = kd.closest('[data-kw]').dataset.kw, k = C.ensureReports(St.state).keywords.find(x => x.id === id); if (k) confirmBox(`Stop tracking "${k.keyword}"?`, 'Its position history is removed.', 'Remove').then(ok => ok && St.dispatch({ t: 'kw-del', id })); return; }
