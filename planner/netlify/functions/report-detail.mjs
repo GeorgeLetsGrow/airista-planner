@@ -1,9 +1,15 @@
 import { authStore, currentUser } from "../lib/users.mjs";
 import { connectedClient } from "../lib/google.mjs";
 
-const json = (data, status = 200) => Response.json(data, { status, headers: { "cache-control": "private, max-age=300" } });
+const json = (data, status = 200) => Response.json(data, { status, headers: { "cache-control": "no-store" } });
 const env = (name) => globalThis.Netlify?.env?.get?.(name) ?? globalThis.process?.env?.[name] ?? "";
-const cache = new Map();
+const REPORT_TTL = 7 * 24 * 60 * 60 * 1000;
+const BLOBS_PKG = ["@netlify", "blobs"].join("/");
+
+async function reportStore() {
+  const { getStore } = await import(BLOBS_PKG);
+  return getStore({ name: "airista-report-cache", consistency: "strong" });
+}
 
 function monthRange(month) {
   if (!/^\d{4}-\d{2}$/.test(month)) throw new Error("Choose a valid month.");
@@ -88,14 +94,20 @@ export default async (req) => {
     if (!(await currentUser(req, store))) return json({ error: "Not signed in" }, 401);
     const url = new URL(req.url), view = url.searchParams.get("view"), month = url.searchParams.get("month") || "";
     if (!["search", "traffic", "links"].includes(view)) return json({ error: "Unknown report" }, 400);
-    const key = `${view}:${month}`, hit = cache.get(key);
-    if (hit && Date.now() - hit.at < 4 * 60 * 60 * 1000) return json({ ...hit.data, cached: true });
+    monthRange(month);
+    const key = `${view}-${month}`, refresh = url.searchParams.get("refresh") === "1", snapshots = await reportStore();
+    if (!refresh) {
+      const saved = await snapshots.get(key, { type: "json" });
+      if (saved && Date.now() - Date.parse(saved.savedAt) < REPORT_TTL) return json({ ...saved.data, savedAt: saved.savedAt, cached: true });
+      return json({ error: saved ? "The saved report expired. Refresh it to pull a new snapshot." : "No saved report yet.", notLoaded: true }, 404);
+    }
     const range = monthRange(month);
     const client = view === "links" ? null : await connectedClient(url.origin);
     if (view !== "links" && !client) return json({ error: "Connect Google before loading this report.", needsConnection: true }, 409);
     const data = view === "search" ? await searchData(client, range) : view === "traffic" ? await trafficData(client, range) : await linksData(range);
-    cache.set(key, { at: Date.now(), data });
-    return json(data);
+    const savedAt = new Date().toISOString();
+    await snapshots.setJSON(key, { savedAt, data });
+    return json({ ...data, savedAt, cached: false });
   } catch (error) {
     console.error("Detailed report failed", error);
     return json({ error: error.message || "Could not load report data." }, 500);

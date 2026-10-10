@@ -149,12 +149,13 @@ ${u.email === St.user.email ? '<span class="urm"></span>' : `<button class="ibtn
     St.dispatch({ t: 'set', id, fields: { status } });
   }
 
-  async function loadReportDetail(tab) {
+  async function loadReportDetail(tab, refresh = false) {
     window.Reports.setDetail(tab, ui.rptMonth, { loading: true }); render();
     try {
-      const r = await fetch(`/api/report-detail?view=${encodeURIComponent(tab)}&month=${encodeURIComponent(ui.rptMonth)}`, { cache: 'no-store' });
+      const r = await fetch(`/api/report-detail?view=${encodeURIComponent(tab)}&month=${encodeURIComponent(ui.rptMonth)}${refresh ? '&refresh=1' : ''}`, { cache: 'no-store' });
       const data = await r.json().catch(() => ({}));
       if (r.status === 401) return location.replace('/login?next=' + encodeURIComponent(location.pathname + location.hash));
+      if (data.notLoaded) { window.Reports.setDetail(tab, ui.rptMonth, null); render(); return; }
       if (!r.ok) throw new Error(data.error || 'Could not load report');
       window.Reports.setDetail(tab, ui.rptMonth, data);
     } catch (error) { window.Reports.setDetail(tab, ui.rptMonth, { error: error.message }); }
@@ -168,8 +169,8 @@ ${u.email === St.user.email ? '<span class="urm"></span>' : `<button class="ibtn
     const jump = t.closest('[data-jump]'); if (jump) return setView(jump.dataset.jump);
     if (t.closest('#who')) return account();
     if (t.closest('#theme')) { window.Theme.toggle(); return themeIcon(); }
-    const rptTab = t.closest('[data-rpt-tab]'); if (rptTab) { ui.rptTab = rptTab.dataset.rptTab; persist(); render(); return; }
-    const rptLoad = t.closest('[data-rpt-load]'); if (rptLoad) return loadReportDetail(rptLoad.dataset.rptLoad);
+    const rptTab = t.closest('[data-rpt-tab]'); if (rptTab) { ui.rptTab = rptTab.dataset.rptTab; persist(); render(); if (ui.rptTab !== 'overview') loadReportDetail(ui.rptTab); return; }
+    const rptLoad = t.closest('[data-rpt-load]'); if (rptLoad) return loadReportDetail(rptLoad.dataset.rptLoad, true);
     const rptCsv = t.closest('[data-rpt-csv]'); if (rptCsv) return window.Reports.csv(rptCsv.dataset.rptCsv, ui.rptMonth);
     if (t.closest('#rpt-toggle')) { ui.rptEdit = !ui.rptEdit; return render(); }
     if (t.closest('#rpt-sync')) {
@@ -221,7 +222,7 @@ ${u.email === St.user.email ? '<span class="urm"></span>' : `<button class="ibtn
     const t = e.target;
     if (t.id === 'hrs-in') return St.dispatch({ t: 'hours', value: Number(t.value) });
     if (t.id === 'ci-date') { ui.noteDate = t.value || U.today(); return render(); }
-    if (t.id === 'rpt-month') { if (/^\d{4}-\d{2}$/.test(t.value)) { ui.rptMonth = t.value; persist(); } t.blur(); return render(); }
+    if (t.id === 'rpt-month') { if (/^\d{4}-\d{2}$/.test(t.value)) { ui.rptMonth = t.value; persist(); } t.blur(); render(); if (ui.rptTab !== 'overview') loadReportDetail(ui.rptTab); return; }
     if (t.id === 'rpt-site') return St.dispatch({ t: 'rpt-site', site: t.value.trim() });
     if (t.dataset.rpt) return St.dispatch({ t: 'rpt-metric', month: ui.rptMonth, key: t.dataset.rpt, value: t.value.trim() });
     if (t.hasAttribute('data-kwpos')) return St.dispatch({ t: 'kw-pos', id: t.closest('[data-kw]').dataset.kw, month: ui.rptMonth, value: t.value.trim() });
@@ -295,5 +296,5 @@ ${u.email === St.user.email ? '<span class="urm"></span>' : `<button class="ibtn
 
   St.subscribe(render);
   setupFilters();
-  St.init().then(() => { const el = $('#f-owner'), o = p => `<option value="${esc(p)}">${esc(p)}</option>`; el.innerHTML = '<option value="">All owners</option>' + St.people.map(o).join(''); el.value = ui.f.owner || ''; }).catch(() => {});
+  St.init().then(() => { const el = $('#f-owner'), o = p => `<option value="${esc(p)}">${esc(p)}</option>`; el.innerHTML = '<option value="">All owners</option>' + St.people.map(o).join(''); el.value = ui.f.owner || ''; if (ui.view === 'reports' && ui.rptTab !== 'overview') loadReportDetail(ui.rptTab); }).catch(() => {});
 })();

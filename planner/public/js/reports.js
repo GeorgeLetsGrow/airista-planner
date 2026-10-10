@@ -25,11 +25,12 @@ window.Reports = (() => {
   function detailPanel(tab, month) {
     const data = detail[`${tab}:${month}`];
     const title = tabNames[tab];
-    if (!data) return `<section class="panel rpt-detail"><div class="panel-h"><div><h2>${esc(title)}</h2><span class="muted">Top 100 rows for ${esc(monthLabel(month))}</span></div><button class="btn primary" type="button" data-rpt-load="${tab}">Load report</button></div><div class="rpt-empty">Load this report when you need it. Results are cached for four hours to conserve API usage.</div></section>`;
+    if (!data) return `<section class="panel rpt-detail"><div class="panel-h"><div><h2>${esc(title)}</h2><span class="muted">Top 100 rows for ${esc(monthLabel(month))}</span></div><button class="btn primary" type="button" data-rpt-load="${tab}">Pull and save report</button></div><div class="rpt-empty">Pull this report once and its snapshot will remain available for seven days—even after refreshing or reopening the app.</div></section>`;
     if (data.loading) return `<section class="panel rpt-detail"><h2>${esc(title)}</h2><div class="rpt-empty">Loading ${esc(title.toLowerCase())}…</div></section>`;
     if (data.error) return `<section class="panel rpt-detail"><div class="panel-h"><h2>${esc(title)}</h2><button class="btn" type="button" data-rpt-load="${tab}">Retry</button></div><div class="rpt-empty auth-err">${esc(data.error)}</div></section>`;
     const rows = data.rows || [], columns = data.columns || [];
-    return `<section class="panel rpt-detail"><div class="panel-h"><div><h2>${esc(title)}</h2><span class="muted">${rows.length} rows · ${esc(monthLabel(month))}${data.cached ? ' · cached' : ''}</span></div><div class="rpt-actions"><button class="btn sm" type="button" data-rpt-load="${tab}">Refresh</button><button class="btn sm" type="button" data-rpt-csv="${tab}">Export CSV</button></div></div>
+    const saved = data.savedAt ? new Date(data.savedAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '';
+    return `<section class="panel rpt-detail"><div class="panel-h"><div><h2>${esc(title)}</h2><span class="muted">${rows.length} rows · ${esc(monthLabel(month))}${saved ? ` · saved ${esc(saved)}` : ''}</span></div><div class="rpt-actions"><button class="btn sm" type="button" data-rpt-load="${tab}">Refresh snapshot</button><button class="btn sm" type="button" data-rpt-csv="${tab}">Export CSV</button></div></div>
 <div class="rpt-find"><input type="search" id="rpt-q" placeholder="Search this report" aria-label="Search this report"><span class="muted" id="rpt-count">${rows.length} shown</span></div>
 <div class="rpt-table-wrap"><table class="rpt-table"><thead><tr>${columns.map(c => `<th class="${numeric.has(c) ? 'num' : ''}">${esc(labels[c] || c)}</th>`).join('')}</tr></thead><tbody>${rows.map(row => `<tr data-report-row data-search="${esc(columns.map(c => row[c] || '').join(' ').toLowerCase())}">${columns.map(c => `<td class="${numeric.has(c) ? 'num' : ''}">${cell(row[c], c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div></section>`;
   }
@@ -129,7 +130,7 @@ ${R.keywords.length ? `<div class="kw-wrap"><table class="kw"><thead><tr><th>Key
 ${ui.rptTab === 'overview' ? overview : detailPanel(ui.rptTab, month)}`;
   }
 
-  function setDetail(tab, month, data) { detail[`${tab}:${month}`] = data; }
+  function setDetail(tab, month, data) { if (data) detail[`${tab}:${month}`] = data; else delete detail[`${tab}:${month}`]; }
   function getDetail(tab, month) { return detail[`${tab}:${month}`]; }
   function csv(tab, month) {
     const data = getDetail(tab, month); if (!data?.rows) return;
