@@ -3,11 +3,13 @@
   const $ = s => document.querySelector(s);
   const main = $('#main'), drawer = $('#drawer'), scrim = $('#scrim'), modal = $('#modal');
   const saved = JSON.parse(localStorage.getItem('awp-planner-ui') || '{}');
-  const ui = { view: location.hash.slice(1) || saved.view || 'focus', f: Object.assign({ type: '', ws: '', owner: '', prio: '', q: '' }, saved.f || {}), drawerId: null, tab: 'comments', since: 'last', noteDate: U.today() };
-  const persist = () => localStorage.setItem('awp-planner-ui', JSON.stringify({ view: ui.view, f: ui.f }));
+  const ui = { view: location.hash.slice(1) || saved.view || 'focus', f: Object.assign({ type: '', ws: '', owner: '', prio: '', q: '' }, saved.f || {}), drawerId: null, tab: 'comments', since: 'last', noteDate: U.today(), rptMonth: saved.rptMonth || window.Reports.prevMonth(U.today().slice(0, 7)), rptEdit: false };
+  const persist = () => localStorage.setItem('awp-planner-ui', JSON.stringify({ view: ui.view, f: ui.f, rptMonth: ui.rptMonth }));
   let deferred = false;
+  const themeIcon = () => { const b = $('#theme'); if (b) b.innerHTML = window.Theme.get() === 'dark' ? U.ICON.sun : U.ICON.moon; };
+  themeIcon();
 
-  const editing = () => { const a = document.activeElement; return a && (a.tagName === 'TEXTAREA' || (a.tagName === 'INPUT' && /text|number|search/.test(a.type))) && a.id !== 'f-q'; };
+  const editing = () => { const a = document.activeElement; return a && (a.tagName === 'TEXTAREA' || (a.tagName === 'INPUT' && /text|number|search|month/.test(a.type))) && a.id !== 'f-q'; };
   function render() {
     if (!St.state) return;
     if (editing()) { deferred = true; renderLight(); return; }
@@ -17,7 +19,7 @@
     $('#filters').hidden = !['focus', 'board'].includes(ui.view);
     $('#who').innerHTML = St.me ? `${U.av(St.me)}${esc(St.me)}` : '';
     const list = filtered();
-    main.innerHTML = ui.view === 'board' ? V.board(St.state, list) : ui.view === 'ws' ? V.workstreams(St.state) : ui.view === 'road' ? V.roadmap(St.state) : ui.view === 'checkin' ? V.checkin(St.state, ui) : V.focus(St.state, list);
+    main.innerHTML = ui.view === 'board' ? V.board(St.state, list) : ui.view === 'ws' ? V.workstreams(St.state) : ui.view === 'road' ? V.roadmap(St.state) : ui.view === 'checkin' ? V.checkin(St.state, ui) : ui.view === 'reports' ? window.Reports.render(St.state, ui) : V.focus(St.state, list);
     renderDrawer();
   }
   function renderLight() { $('#stats').innerHTML = V.stats(St.state); }
@@ -152,6 +154,9 @@ ${u.email === St.user.email ? '<span class="urm"></span>' : `<button class="ibtn
     const tab = t.closest('#tabs button'); if (tab) return setView(tab.dataset.view);
     const jump = t.closest('[data-jump]'); if (jump) return setView(jump.dataset.jump);
     if (t.closest('#who')) return account();
+    if (t.closest('#theme')) { window.Theme.toggle(); return themeIcon(); }
+    if (t.closest('#rpt-toggle')) { ui.rptEdit = !ui.rptEdit; return render(); }
+    const kd = t.closest('[data-kwdel]'); if (kd) { const id = kd.closest('[data-kw]').dataset.kw, k = C.ensureReports(St.state).keywords.find(x => x.id === id); if (k) confirmBox(`Stop tracking "${k.keyword}"?`, 'Its position history is removed.', 'Remove').then(ok => ok && St.dispatch({ t: 'kw-del', id })); return; }
     if (t.closest('#export')) return St.exportJSON();
     if (t === scrim || t.closest('[data-close]')) return closeDrawer();
     const card = t.closest('.tcard'); if (card) return openItem(card.dataset.id);
@@ -182,6 +187,11 @@ ${u.email === St.user.email ? '<span class="urm"></span>' : `<button class="ibtn
     const t = e.target;
     if (t.id === 'hrs-in') return St.dispatch({ t: 'hours', value: Number(t.value) });
     if (t.id === 'ci-date') { ui.noteDate = t.value || U.today(); return render(); }
+    if (t.id === 'rpt-month') { if (/^\d{4}-\d{2}$/.test(t.value)) { ui.rptMonth = t.value; persist(); } t.blur(); return render(); }
+    if (t.id === 'rpt-site') return St.dispatch({ t: 'rpt-site', site: t.value.trim() });
+    if (t.dataset.rpt) return St.dispatch({ t: 'rpt-metric', month: ui.rptMonth, key: t.dataset.rpt, value: t.value.trim() });
+    if (t.hasAttribute('data-kwpos')) return St.dispatch({ t: 'kw-pos', id: t.closest('[data-kw]').dataset.kw, month: ui.rptMonth, value: t.value.trim() });
+    if (t.hasAttribute('data-kwurl')) return St.dispatch({ t: 'kw-url', id: t.closest('[data-kw]').dataset.kw, url: t.value.trim() });
     if (!drawer.contains(t) || !t.dataset.f) return;
     if (t.dataset.f === 'status') return setStatus(ui.drawerId, t.value);
     St.dispatch({ t: 'set', id: ui.drawerId, fields: { [t.dataset.f]: t.value.trim() } });
@@ -195,6 +205,13 @@ ${u.email === St.user.email ? '<span class="urm"></span>' : `<button class="ibtn
     noteTimer = setTimeout(() => { St.dispatch({ t: 'note', date, text }); const s = $('#ci-saved'); if (s) s.textContent = `Saved by ${St.me || 'you'} · just now`; }, 700);
   });
   document.addEventListener('submit', e => {
+    if (e.target.id === 'kw-add') {
+      e.preventDefault();
+      const kw = $('#kw-new').value.trim(), url = $('#kw-new-url').value.trim();
+      if (!kw) return $('#kw-new').focus();
+      $('#kw-new').value = ''; $('#kw-new-url').value = ''; document.activeElement.blur();
+      return St.dispatch({ t: 'kw-add', keyword: kw, url });
+    }
     if (e.target.id !== 'cmform') return;
     e.preventDefault();
     const ta = $('#cm-text'), text = ta.value.trim();

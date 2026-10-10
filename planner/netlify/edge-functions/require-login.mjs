@@ -3,7 +3,7 @@
 // so this only needs to verify the cookie signature.
 import { SESSION_COOKIE, getCookie, getSecret, verify } from "../lib/token.mjs";
 
-const PUBLIC = new Set(["/login", "/login.html", "/js/login.js", "/styles.css", "/app.css", "/assets/airista-logo.png", "/favicon.ico"]);
+const PUBLIC = new Set(["/login", "/login.html", "/js/login.js", "/js/theme.js", "/styles.css", "/app.css", "/assets/airista-logo.png", "/favicon.ico"]);
 
 export default async (req, context) => {
   const url = new URL(req.url);

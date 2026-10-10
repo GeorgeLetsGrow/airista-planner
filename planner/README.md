@@ -26,6 +26,15 @@ Local development: run `npm install`, put `AUTH_SECRET=...` and `INITIAL_USERS=.
 - Every field change is recorded in that card's history with the person's name and the time. Non-card changes (hours, counters, access) go to an activity log.
 - If the API is unreachable, for example when the files are opened outside Netlify, the app runs in local preview mode and saves to that browser only.
 
+## Reports
+- The **Reports** tab is the SEO scorecard. Each month, type in figures from Search Console, GA4, the rank tracker and the backlink tool (**Edit figures**). Cards show the value, the change from the previous month and a six-month trend. For average position and keyword rank, a lower number counts as better.
+- **Keyword rankings** tracks Google positions per keyword and target page. Enter positions for the selected month.
+- **SEO tools** links to Search Console, GA4, Looker Studio, Bing Webmaster Tools, Trends and Keyword Planner, plus checks pre-filled for the report site: PageSpeed, Rich Results, schema, robots.txt, sitemap, security headers, backlinks and indexed pages.
+- Nothing is pre-filled with numbers. Report data is stored with the plan, and every change is logged in Daily check-in.
+
+## Dark mode
+The moon/sun button in the header switches themes. The choice is saved per browser; without one, the app follows the operating system setting.
+
 ## Data
 - The first request seeds the store from `core.js`. To reset, delete the `airista-planner` store in Netlify, under **Blobs** in the site dashboard. Deleting `airista-auth` resets accounts to the defaults with no passwords.
 - **Export JSON backup** in the footer downloads the current state.

@@ -105,6 +105,63 @@ function fmtVal(f, v) {
   return v === '' || v == null ? '(empty)' : String(v);
 }
 function addLog(s, at, by, text) { s.log.unshift({ at: at, by: by, text: text }); if (s.log.length > 400) s.log.length = 400; }
+
+// ---- SEO reporting ----
+// Monthly figures are typed in from Search Console, GA4 and the backlink tool. Nothing is pre-filled.
+var SEO_METRICS = [
+  { key: 'clicks', label: 'Organic clicks', source: 'Search Console', int: true },
+  { key: 'impr', label: 'Impressions', source: 'Search Console', int: true },
+  { key: 'ctr', label: 'Average CTR', source: 'Search Console', unit: '%' },
+  { key: 'pos', label: 'Average position', source: 'Search Console', lowerBetter: true },
+  { key: 'sessions', label: 'Organic sessions', source: 'GA4', int: true },
+  { key: 'conv', label: 'Organic conversions', source: 'GA4', int: true },
+  { key: 'top10', label: 'Keywords in top 10', source: 'Rank tracker', int: true },
+  { key: 'refdom', label: 'Referring domains', source: 'Backlink tool', int: true },
+  { key: 'indexed', label: 'Indexed pages', source: 'Search Console', int: true },
+  { key: 'cwv', label: 'Core Web Vitals pass', source: 'Search Console', unit: '%' }
+];
+function ensureReports(state) {
+  if (!state.reports) state.reports = { site: 'https://www.airistaflow.com', months: {}, keywords: [] };
+  if (!state.reports.months) state.reports.months = {};
+  if (!state.reports.keywords) state.reports.keywords = [];
+  return state.reports;
+}
+var MONTH_RE = /^\d{4}-\d{2}$/;
+function numOrBlank(v) {
+  if (v === '' || v == null) return '';
+  var n = Number(v);
+  return isFinite(n) ? Math.round(n * 100) / 100 : null;
+}
+function applyReportOp(state, op, at, by) {
+  var R = ensureReports(state);
+  if (op.t === 'rpt-site') {
+    var s = String(op.site || '').trim().slice(0, 300);
+    if (/^https?:\/\/[^\s]+$/i.test(s) && s !== R.site) { addLog(state, at, by, 'Report site set to ' + s); R.site = s.replace(/\/$/, ''); }
+  } else if (op.t === 'rpt-metric' && MONTH_RE.test(op.month)) {
+    var m = SEO_METRICS.find(function (x) { return x.key === op.key; }), v = numOrBlank(op.value);
+    if (!m || v === null) return;
+    if (m.int && v !== '') v = Math.round(v);
+    var row = R.months[op.month] || (R.months[op.month] = {});
+    if (row[m.key] === v || (row[m.key] === undefined && v === '')) return;
+    if (v === '') delete row[m.key]; else row[m.key] = v;
+    addLog(state, at, by, m.label + ' for ' + op.month + ' set to ' + (v === '' ? '(empty)' : v + (m.unit || '')));
+  } else if (op.t === 'kw-add') {
+    var kw = String(op.keyword || '').trim().slice(0, 120);
+    if (!kw || R.keywords.length >= 300 || R.keywords.some(function (k) { return k.keyword.toLowerCase() === kw.toLowerCase(); })) return;
+    R.keywords.push({ id: 'k' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), keyword: kw, url: String(op.url || '').trim().slice(0, 300), pos: {} });
+    addLog(state, at, by, 'Tracking keyword "' + kw + '"');
+  } else if (op.t === 'kw-del') {
+    var k = R.keywords.find(function (x) { return x.id === op.id; });
+    if (k) { R.keywords = R.keywords.filter(function (x) { return x !== k; }); addLog(state, at, by, 'Stopped tracking "' + k.keyword + '"'); }
+  } else if (op.t === 'kw-pos' && MONTH_RE.test(op.month)) {
+    var kk = R.keywords.find(function (x) { return x.id === op.id; }), p = numOrBlank(op.value);
+    if (!kk || p === null || (p !== '' && (p < 1 || p > 1000))) return;
+    if (p === '') delete kk.pos[op.month]; else kk.pos[op.month] = Math.round(p * 10) / 10;
+  } else if (op.t === 'kw-url') {
+    var ku = R.keywords.find(function (x) { return x.id === op.id; });
+    if (ku) ku.url = String(op.url || '').trim().slice(0, 300);
+  }
+}
 function byOrder(a, b) { return a.order - b.order; }
 
 function applyOps(state, ops, meta) {
@@ -147,6 +204,8 @@ function applyOps(state, ops, meta) {
       addLog(state, at, by, 'Started ' + (op.label || op.period) + ': monthly counters and support hours reset');
       state.period = op.period; state.hours.used = 0;
       Object.keys(state.counters).forEach(function (k) { state.counters[k].done = 0; });
+    } else if (/^(rpt|kw)-/.test(op.t || '')) {
+      applyReportOp(state, op, at, by);
     }
     if (it && it.history.length > 200) it.history.length = 200;
   });
@@ -154,5 +213,5 @@ function applyOps(state, ops, meta) {
   return state;
 }
 
-return { TYPES: TYPES, typeOf: typeOf, STATUS: STATUS, PRIORITY: PRIORITY, LANES: LANES, PEOPLE: PEOPLE, WS: WS, ROADMAP: ROADMAP, seed: seed, applyOps: applyOps };
+return { TYPES: TYPES, typeOf: typeOf, STATUS: STATUS, PRIORITY: PRIORITY, LANES: LANES, PEOPLE: PEOPLE, WS: WS, ROADMAP: ROADMAP, SEO_METRICS: SEO_METRICS, ensureReports: ensureReports, seed: seed, applyOps: applyOps };
 });
