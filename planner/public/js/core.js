@@ -115,8 +115,8 @@ var SEO_METRICS = [
   { key: 'pos', label: 'Average position', source: 'Search Console', lowerBetter: true },
   { key: 'sessions', label: 'Organic sessions', source: 'GA4', int: true },
   { key: 'conv', label: 'Organic conversions', source: 'GA4', int: true },
-  { key: 'top10', label: 'Keywords in top 10', source: 'Rank tracker', int: true },
-  { key: 'refdom', label: 'Referring domains', source: 'Backlink tool', int: true },
+  { key: 'top10', label: 'Keywords in top 10', source: 'Ahrefs', int: true },
+  { key: 'refdom', label: 'Referring domains', source: 'Ahrefs', int: true },
   { key: 'indexed', label: 'Indexed pages', source: 'Search Console', int: true },
   { key: 'cwv', label: 'Core Web Vitals pass', source: 'Search Console', unit: '%' }
 ];

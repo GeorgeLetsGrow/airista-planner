@@ -25,6 +25,19 @@ async function googleFetch(client, url, body) {
   return data;
 }
 
+async function ahrefsFetch(path, params) {
+  const apiKey = env("AHREFS_API_KEY").trim();
+  if (!apiKey) return null;
+  const url = new URL(`https://api.ahrefs.com/v3/site-explorer/${path}`);
+  Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, String(value)));
+  const response = await fetch(url, {
+    headers: { authorization: `Bearer ${apiKey}`, accept: "application/json" },
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data?.error || data?.message || `Ahrefs API returned ${response.status}.`);
+  return data;
+}
+
 export default async (req) => {
   if (req.method !== "GET") return json({ error: "Method not allowed" }, 405);
   try {
@@ -40,7 +53,8 @@ export default async (req) => {
     const client = await connectedClient(new URL(req.url).origin);
     if (!client) return json({ error: "Connect Google before syncing.", needsConnection: true }, 409);
 
-    const [ga4, search] = await Promise.all([
+    const ahrefsTarget = env("AHREFS_TARGET").trim() || "airistaflow.com";
+    const [ga4, search, backlinks, keywordHistory] = await Promise.all([
       googleFetch(client, `https://analyticsdata.googleapis.com/v1beta/properties/${encodeURIComponent(propertyId)}:runReport`, {
         dateRanges: [range],
         metrics: [{ name: "sessions" }, { name: "keyEvents" }],
@@ -50,6 +64,20 @@ export default async (req) => {
         startDate: range.startDate,
         endDate: range.endDate,
         dataState: "final",
+      }),
+      ahrefsFetch("backlinks-stats", {
+        date: range.endDate,
+        target: ahrefsTarget,
+        mode: "subdomains",
+        protocol: "both",
+      }),
+      ahrefsFetch("keywords-history", {
+        select: "date,top3,top4_10",
+        date_from: range.startDate,
+        date_to: range.endDate,
+        target: ahrefsTarget,
+        mode: "subdomains",
+        history_grouping: "monthly",
       }),
     ]);
 
@@ -64,6 +92,10 @@ export default async (req) => {
         pos: sc.position ?? 0,
         sessions: Number(gaValues[0]?.value || 0),
         conv: Number(gaValues[1]?.value || 0),
+        ...(backlinks ? { refdom: Number(backlinks.metrics?.live_refdomains || 0) } : {}),
+        ...(keywordHistory ? {
+          top10: Number(keywordHistory.keywords?.[0]?.top3 || 0) + Number(keywordHistory.keywords?.[0]?.top4_10 || 0),
+        } : {}),
       },
     });
   } catch (error) {
