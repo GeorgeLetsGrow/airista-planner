@@ -149,17 +149,25 @@ ${u.email === St.user.email ? '<span class="urm"></span>' : `<button class="ibtn
     St.dispatch({ t: 'set', id, fields: { status } });
   }
 
-  async function loadReportDetail(tab, refresh = false) {
-    window.Reports.setDetail(tab, ui.rptMonth, { loading: true }); render();
+  async function loadReportDetail(tab, refresh = false, month = ui.rptMonth) {
+    window.Reports.setDetail(tab, month, { loading: true }); render();
     try {
-      const r = await fetch(`/api/report-detail?view=${encodeURIComponent(tab)}&month=${encodeURIComponent(ui.rptMonth)}${refresh ? '&refresh=1' : ''}`, { cache: 'no-store' });
+      const r = await fetch(`/api/report-detail?view=${encodeURIComponent(tab)}&month=${encodeURIComponent(month)}${refresh ? '&refresh=1' : ''}`, { cache: 'no-store' });
       const data = await r.json().catch(() => ({}));
       if (r.status === 401) return location.replace('/login?next=' + encodeURIComponent(location.pathname + location.hash));
-      if (data.notLoaded) { window.Reports.setDetail(tab, ui.rptMonth, null); render(); return; }
+      if (data.notLoaded) { window.Reports.setDetail(tab, month, null); if (ui.rptMonth === month && ui.rptTab === tab) render(); return; }
       if (!r.ok) throw new Error(data.error || 'Could not load report');
-      window.Reports.setDetail(tab, ui.rptMonth, data);
-    } catch (error) { window.Reports.setDetail(tab, ui.rptMonth, { error: error.message }); }
+      window.Reports.setDetail(tab, month, data);
+    } catch (error) { window.Reports.setDetail(tab, month, { error: error.message }); }
+    if (ui.rptMonth === month && ui.rptTab === tab) render();
+  }
+
+  function selectReportMonth(value) {
+    if (!/^\d{4}-\d{2}$/.test(value) || value === ui.rptMonth) return;
+    ui.rptMonth = value; persist();
+    if (document.activeElement?.id === 'rpt-month') document.activeElement.blur();
     render();
+    if (ui.rptTab !== 'overview') loadReportDetail(ui.rptTab, false, value);
   }
 
   // clicks
@@ -231,7 +239,7 @@ ${u.email === St.user.email ? '<span class="urm"></span>' : `<button class="ibtn
     const t = e.target;
     if (t.id === 'hrs-in') return St.dispatch({ t: 'hours', value: Number(t.value) });
     if (t.id === 'ci-date') { ui.noteDate = t.value || U.today(); return render(); }
-    if (t.id === 'rpt-month') { if (/^\d{4}-\d{2}$/.test(t.value)) { ui.rptMonth = t.value; persist(); } t.blur(); render(); if (ui.rptTab !== 'overview') loadReportDetail(ui.rptTab); return; }
+    if (t.id === 'rpt-month') { selectReportMonth(t.value); return; }
     if (t.id === 'rpt-site') return St.dispatch({ t: 'rpt-site', site: t.value.trim() });
     if (t.dataset.rpt) return St.dispatch({ t: 'rpt-metric', month: ui.rptMonth, key: t.dataset.rpt, value: t.value.trim() });
     if (t.hasAttribute('data-kwpos')) return St.dispatch({ t: 'kw-pos', id: t.closest('[data-kw]').dataset.kw, month: ui.rptMonth, value: t.value.trim() });
@@ -242,6 +250,7 @@ ${u.email === St.user.email ? '<span class="urm"></span>' : `<button class="ibtn
   });
   let noteTimer;
   document.addEventListener('input', e => {
+    if (e.target.id === 'rpt-month') { selectReportMonth(e.target.value); return; }
     if (e.target.id === 'rpt-q') {
       const q = e.target.value.trim().toLowerCase(), rows = [...document.querySelectorAll('[data-report-row]')];
       let shown = 0; rows.forEach(row => { row.hidden = !!q && !row.dataset.search.includes(q); if (!row.hidden) shown++; });
