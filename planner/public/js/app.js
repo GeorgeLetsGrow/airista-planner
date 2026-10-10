@@ -3,6 +3,7 @@
   const $ = s => document.querySelector(s);
   const main = $('#main'), drawer = $('#drawer'), scrim = $('#scrim'), modal = $('#modal');
   const saved = JSON.parse(localStorage.getItem('awp-planner-ui') || '{}');
+  if (new URLSearchParams(location.search).has('google')) history.replaceState(null, '', location.pathname + location.hash);
   const ui = { view: location.hash.slice(1) || saved.view || 'focus', f: Object.assign({ type: '', ws: '', owner: '', prio: '', q: '' }, saved.f || {}), drawerId: null, tab: 'comments', since: 'last', noteDate: U.today(), rptMonth: saved.rptMonth || window.Reports.prevMonth(U.today().slice(0, 7)), rptEdit: false };
   const persist = () => localStorage.setItem('awp-planner-ui', JSON.stringify({ view: ui.view, f: ui.f, rptMonth: ui.rptMonth }));
   let deferred = false;

@@ -28,13 +28,13 @@ export default async (req) => {
     if (route === "callback" && req.method === "GET") {
       const state = await verify(url.searchParams.get("state"), requireSecret(), "google-oauth");
       if (!state || state.e !== me.email || me.role !== "admin") return json({ error: "This Google connection request is invalid or expired." }, 400);
-      if (url.searchParams.get("error")) return Response.redirect(`${origin}/#reports`, 302);
+      if (url.searchParams.get("error")) return Response.redirect(`${origin}/?google=cancelled#reports`, 302);
       const code = url.searchParams.get("code");
       if (!code) return json({ error: "Google did not return an authorization code." }, 400);
       const { tokens } = await oauthClient(origin).getToken(code);
       if (!tokens.refresh_token) throw new Error("Google did not return a refresh token. Reconnect and approve access again.");
       await saveRefreshToken(tokens.refresh_token);
-      return Response.redirect(`${origin}/#reports`, 302);
+      return Response.redirect(`${origin}/?google=connected#reports`, 302);
     }
     return json({ error: "Not found" }, 404);
   } catch (error) {
