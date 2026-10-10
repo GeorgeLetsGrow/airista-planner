@@ -55,7 +55,7 @@ async function trafficData(client, range) {
   const property = env("GA4_PROPERTY_ID").replace(/^properties\//, "").trim();
   const data = await googleFetch(client, `https://analyticsdata.googleapis.com/v1beta/properties/${encodeURIComponent(property)}:runReport`, {
     dateRanges: [range],
-    dimensions: [{ name: "landingPagePlusQueryString" }],
+    dimensions: [{ name: "landingPage" }],
     metrics: [{ name: "sessions" }, { name: "activeUsers" }, { name: "keyEvents" }],
     dimensionFilter: { filter: { fieldName: "sessionDefaultChannelGroup", stringFilter: { matchType: "EXACT", value: "Organic Search" } } },
     orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
