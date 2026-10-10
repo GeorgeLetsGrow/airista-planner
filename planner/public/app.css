@@ -300,6 +300,7 @@ button.fe{cursor:pointer}button.fe:hover{background:var(--bg-soft)}
 }
 
 /* reports */
+.rpt-actions{display:flex;gap:8px;align-items:center}.rpt-sync-status{margin:0 0 14px;font-size:12px}.rpt-sync-status.auth-err{color:var(--danger)}
 .rpt{display:flex;flex-direction:column;gap:16px}
 .rpt-ctl{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
 .rpt-ctl #rpt-site{width:280px}

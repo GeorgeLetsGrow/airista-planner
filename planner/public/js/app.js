@@ -156,6 +156,24 @@ ${u.email === St.user.email ? '<span class="urm"></span>' : `<button class="ibtn
     if (t.closest('#who')) return account();
     if (t.closest('#theme')) { window.Theme.toggle(); return themeIcon(); }
     if (t.closest('#rpt-toggle')) { ui.rptEdit = !ui.rptEdit; return render(); }
+    if (t.closest('#rpt-sync')) {
+      const button = t.closest('#rpt-sync'), status = $('#rpt-sync-status');
+      button.disabled = true; button.textContent = 'Syncing…'; status.textContent = 'Loading GA4 and Search Console…';
+      fetch('/api/google-report?month=' + encodeURIComponent(ui.rptMonth), { cache: 'no-store' }).then(async r => {
+        const data = await r.json().catch(() => ({}));
+        if (r.status === 401) return location.replace('/login?next=' + encodeURIComponent(location.pathname + location.hash));
+        if (data.needsConnection) {
+          const start = await fetch('/api/google-auth/start', { method: 'POST' });
+          const auth = await start.json().catch(() => ({}));
+          if (!start.ok || !auth.url) throw new Error(auth.error || 'Could not start Google connection');
+          location.href = auth.url; return;
+        }
+        if (!r.ok) throw new Error(data.error || 'Google sync failed');
+        St.dispatch(Object.entries(data.values).map(([key, value]) => ({ t: 'rpt-metric', month: ui.rptMonth, key, value })));
+        status.textContent = 'Google data synced. The six imported figures were saved to this month.';
+      }).catch(err => { status.textContent = err.message; status.classList.add('auth-err'); }).finally(() => { button.disabled = false; button.textContent = 'Sync Google data'; });
+      return;
+    }
     const kd = t.closest('[data-kwdel]'); if (kd) { const id = kd.closest('[data-kw]').dataset.kw, k = C.ensureReports(St.state).keywords.find(x => x.id === id); if (k) confirmBox(`Stop tracking "${k.keyword}"?`, 'Its position history is removed.', 'Remove').then(ok => ok && St.dispatch({ t: 'kw-del', id })); return; }
     if (t.closest('#export')) return St.exportJSON();
     if (t === scrim || t.closest('[data-close]')) return closeDrawer();

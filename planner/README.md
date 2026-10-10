@@ -8,6 +8,9 @@ A shared work plan. Edits save to Netlify Blobs through one Netlify Function. Ev
 3. In **Site configuration → Environment variables**, add:
    - `AUTH_SECRET`: a long random string (32+ characters), e.g. the output of `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`. Mark it secret. Changing it later signs everyone out and voids open setup links.
    - `INITIAL_USERS`: the accounts to create on first run, as comma-separated `email:Display name:role` entries (role is `admin` or `user`), e.g. `admin@example.com:Alex:admin,client@example.com:Sam:user`. Only read once, when the account store is empty. Keeps names and emails out of the repo.
+   - `GOOGLE_OAUTH_CLIENT_ID` and `GOOGLE_OAUTH_CLIENT_SECRET`: credentials for a Google web OAuth client whose authorized redirect URI is `https://<your-site>/api/google-auth/callback`. Mark the secret as secret.
+   - `GA4_PROPERTY_ID`: the numeric GA4 property ID (for AiRISTA, `376930282`).
+   - `SEARCH_CONSOLE_SITE_URL`: the exact Search Console property identifier (for AiRISTA, `sc-domain:airistaflow.com`).
 4. Deploy. Netlify installs `@netlify/blobs` from `package.json`. Blobs need no other setup.
 5. Get the first admin in: run `AUTH_SECRET=<same value> node scripts/setup-link.mjs https://<your-site>.netlify.app <your-email>` and open the printed link. Each link works once and expires in 7 days.
 
@@ -31,6 +34,8 @@ Local development: run `npm install`, put `AUTH_SECRET=...` and `INITIAL_USERS=.
 - **Keyword rankings** tracks Google positions per keyword and target page. Enter positions for the selected month.
 - **SEO tools** links to Search Console, GA4, Looker Studio, Bing Webmaster Tools, Trends and Keyword Planner, plus checks pre-filled for the report site: PageSpeed, Rich Results, schema, robots.txt, sitemap, security headers, backlinks and indexed pages.
 - Nothing is pre-filled with numbers. Report data is stored with the plan, and every change is logged in Daily check-in.
+- **Sync Google data** imports Search Console clicks, impressions, CTR and average position plus GA4 organic sessions and key events for the selected month. Indexed pages, Core Web Vitals, rank-tracker and backlink figures remain manual because those values are not exposed by these two report endpoints.
+- The first sync by an admin opens Google's read-only consent flow. The resulting refresh token is encrypted with `AUTH_SECRET` and stored server-side in Netlify Blobs; it is never sent to the browser.
 
 ## Dark mode
 The moon/sun button in the header switches themes. The choice is saved per browser; without one, the app follows the operating system setting.

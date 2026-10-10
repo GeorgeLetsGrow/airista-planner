@@ -88,7 +88,8 @@ ${kmonths.map(x => x === month
 <div class="kpis">${cards}</div></section>
 
 <div class="rpt-2">
-<section class="panel"><div class="panel-h"><h2>Enter ${esc(monthLabel(month))} figures</h2><button class="btn sm" type="button" id="rpt-toggle">${ui.rptEdit ? 'Hide' : 'Edit figures'}</button></div>
+<section class="panel"><div class="panel-h"><h2>Enter ${esc(monthLabel(month))} figures</h2><div class="rpt-actions"><button class="btn sm" type="button" id="rpt-sync">Sync Google data</button><button class="btn sm" type="button" id="rpt-toggle">${ui.rptEdit ? 'Hide' : 'Edit figures'}</button></div></div>
+<p class="rpt-sync-status muted" id="rpt-sync-status">Pulls clicks, impressions, CTR and position from Search Console, plus organic sessions and key events from GA4.</p>
 ${ui.rptEdit ? `<div class="fgrid">${entry}</div><p class="muted" style="font-size:12px">Saves when you leave a field. Leave a field blank if the number isn't available yet.</p>` : `<p class="muted">Use <b>Edit figures</b> to type this month's numbers from each source. Changes are logged in Daily check-in.</p>`}
 </section>
 <section class="panel"><div class="panel-h"><h2>SEO tools</h2><span class="muted">${esc(host(R.site))}</span></div>${tools(R.site)}</section>
