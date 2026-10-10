@@ -4,8 +4,8 @@
   const main = $('#main'), drawer = $('#drawer'), scrim = $('#scrim'), modal = $('#modal');
   const saved = JSON.parse(localStorage.getItem('awp-planner-ui') || '{}');
   if (new URLSearchParams(location.search).has('google')) history.replaceState(null, '', location.pathname + location.hash);
-  const ui = { view: location.hash.slice(1) || saved.view || 'focus', f: Object.assign({ type: '', ws: '', owner: '', prio: '', q: '' }, saved.f || {}), drawerId: null, tab: 'comments', since: 'last', noteDate: U.today(), rptMonth: saved.rptMonth || window.Reports.prevMonth(U.today().slice(0, 7)), rptEdit: false };
-  const persist = () => localStorage.setItem('awp-planner-ui', JSON.stringify({ view: ui.view, f: ui.f, rptMonth: ui.rptMonth }));
+  const ui = { view: location.hash.slice(1) || saved.view || 'focus', f: Object.assign({ type: '', ws: '', owner: '', prio: '', q: '' }, saved.f || {}), drawerId: null, tab: 'comments', since: 'last', noteDate: U.today(), rptMonth: saved.rptMonth || window.Reports.prevMonth(U.today().slice(0, 7)), rptTab: saved.rptTab || 'overview', rptEdit: false };
+  const persist = () => localStorage.setItem('awp-planner-ui', JSON.stringify({ view: ui.view, f: ui.f, rptMonth: ui.rptMonth, rptTab: ui.rptTab }));
   let deferred = false;
   const themeIcon = () => { const b = $('#theme'); if (b) b.innerHTML = window.Theme.get() === 'dark' ? U.ICON.sun : U.ICON.moon; };
   themeIcon();
@@ -149,6 +149,18 @@ ${u.email === St.user.email ? '<span class="urm"></span>' : `<button class="ibtn
     St.dispatch({ t: 'set', id, fields: { status } });
   }
 
+  async function loadReportDetail(tab) {
+    window.Reports.setDetail(tab, ui.rptMonth, { loading: true }); render();
+    try {
+      const r = await fetch(`/api/report-detail?view=${encodeURIComponent(tab)}&month=${encodeURIComponent(ui.rptMonth)}`, { cache: 'no-store' });
+      const data = await r.json().catch(() => ({}));
+      if (r.status === 401) return location.replace('/login?next=' + encodeURIComponent(location.pathname + location.hash));
+      if (!r.ok) throw new Error(data.error || 'Could not load report');
+      window.Reports.setDetail(tab, ui.rptMonth, data);
+    } catch (error) { window.Reports.setDetail(tab, ui.rptMonth, { error: error.message }); }
+    render();
+  }
+
   // clicks
   document.addEventListener('click', e => {
     const t = e.target;
@@ -156,6 +168,9 @@ ${u.email === St.user.email ? '<span class="urm"></span>' : `<button class="ibtn
     const jump = t.closest('[data-jump]'); if (jump) return setView(jump.dataset.jump);
     if (t.closest('#who')) return account();
     if (t.closest('#theme')) { window.Theme.toggle(); return themeIcon(); }
+    const rptTab = t.closest('[data-rpt-tab]'); if (rptTab) { ui.rptTab = rptTab.dataset.rptTab; persist(); render(); return; }
+    const rptLoad = t.closest('[data-rpt-load]'); if (rptLoad) return loadReportDetail(rptLoad.dataset.rptLoad);
+    const rptCsv = t.closest('[data-rpt-csv]'); if (rptCsv) return window.Reports.csv(rptCsv.dataset.rptCsv, ui.rptMonth);
     if (t.closest('#rpt-toggle')) { ui.rptEdit = !ui.rptEdit; return render(); }
     if (t.closest('#rpt-sync')) {
       const button = t.closest('#rpt-sync'), status = $('#rpt-sync-status');
@@ -217,6 +232,12 @@ ${u.email === St.user.email ? '<span class="urm"></span>' : `<button class="ibtn
   });
   let noteTimer;
   document.addEventListener('input', e => {
+    if (e.target.id === 'rpt-q') {
+      const q = e.target.value.trim().toLowerCase(), rows = [...document.querySelectorAll('[data-report-row]')];
+      let shown = 0; rows.forEach(row => { row.hidden = !!q && !row.dataset.search.includes(q); if (!row.hidden) shown++; });
+      const count = $('#rpt-count'); if (count) count.textContent = `${shown} shown`;
+      return;
+    }
     if (e.target.id !== 'ci-text') return;
     const date = ui.noteDate, text = e.target.value;
     clearTimeout(noteTimer);

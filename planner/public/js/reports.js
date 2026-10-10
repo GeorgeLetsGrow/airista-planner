@@ -1,6 +1,7 @@
 // SEO reporting view: monthly scorecard, keyword tracker, page checks and tool shortcuts.
 window.Reports = (() => {
   const C = window.PlannerCore, U = window.U, { esc } = U;
+  const detail = {};
 
   const host = site => { try { return new URL(site).hostname; } catch (e) { return ''; } };
   const enc = encodeURIComponent;
@@ -8,6 +9,30 @@ window.Reports = (() => {
   const prevMonth = m => { const [y, n] = m.split('-').map(Number); const d = new Date(y, n - 2, 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; };
   const lastMonths = (end, n) => { const out = [end]; while (out.length < n) out.unshift(prevMonth(out[0])); return out; };
   const fmtNum = (v, unit) => v === undefined || v === '' ? '—' : Number(v).toLocaleString('en-US', { maximumFractionDigits: 2 }) + (unit || '');
+
+  const tabNames = { overview: 'Overview', search: 'Search performance', traffic: 'Traffic & conversions', links: 'Links & rankings' };
+  const labels = { item: 'Query or page', kind: 'Type', clicks: 'Clicks', impressions: 'Impressions', ctr: 'CTR', position: 'Position', landingPage: 'Landing page', sessions: 'Sessions', activeUsers: 'Active users', keyEvents: 'Key events', type: 'Type', primary: 'Keyword or referring domain', traffic: 'Est. traffic', detail: 'Country or anchor', url: 'Source / ranking URL', target: 'Target URL' };
+  const numeric = new Set(['clicks', 'impressions', 'ctr', 'position', 'sessions', 'activeUsers', 'keyEvents', 'traffic']);
+
+  function cell(value, column) {
+    if (value === undefined || value === null || value === '') return '—';
+    if ((column === 'url' || column === 'target') && /^https?:\/\//.test(value)) return `<a href="${esc(value)}" target="_blank" rel="noopener">${esc(value)}</a>`;
+    if (column === 'ctr') return `${Number(value).toFixed(2)}%`;
+    if (numeric.has(column)) return Number(value).toLocaleString('en-US', { maximumFractionDigits: 2 });
+    return esc(String(value));
+  }
+
+  function detailPanel(tab, month) {
+    const data = detail[`${tab}:${month}`];
+    const title = tabNames[tab];
+    if (!data) return `<section class="panel rpt-detail"><div class="panel-h"><div><h2>${esc(title)}</h2><span class="muted">Top 100 rows for ${esc(monthLabel(month))}</span></div><button class="btn primary" type="button" data-rpt-load="${tab}">Load report</button></div><div class="rpt-empty">Load this report when you need it. Results are cached for four hours to conserve API usage.</div></section>`;
+    if (data.loading) return `<section class="panel rpt-detail"><h2>${esc(title)}</h2><div class="rpt-empty">Loading ${esc(title.toLowerCase())}…</div></section>`;
+    if (data.error) return `<section class="panel rpt-detail"><div class="panel-h"><h2>${esc(title)}</h2><button class="btn" type="button" data-rpt-load="${tab}">Retry</button></div><div class="rpt-empty auth-err">${esc(data.error)}</div></section>`;
+    const rows = data.rows || [], columns = data.columns || [];
+    return `<section class="panel rpt-detail"><div class="panel-h"><div><h2>${esc(title)}</h2><span class="muted">${rows.length} rows · ${esc(monthLabel(month))}${data.cached ? ' · cached' : ''}</span></div><div class="rpt-actions"><button class="btn sm" type="button" data-rpt-load="${tab}">Refresh</button><button class="btn sm" type="button" data-rpt-csv="${tab}">Export CSV</button></div></div>
+<div class="rpt-find"><input type="search" id="rpt-q" placeholder="Search this report" aria-label="Search this report"><span class="muted" id="rpt-count">${rows.length} shown</span></div>
+<div class="rpt-table-wrap"><table class="rpt-table"><thead><tr>${columns.map(c => `<th class="${numeric.has(c) ? 'num' : ''}">${esc(labels[c] || c)}</th>`).join('')}</tr></thead><tbody>${rows.map(row => `<tr data-report-row data-search="${esc(columns.map(c => row[c] || '').join(' ').toLowerCase())}">${columns.map(c => `<td class="${numeric.has(c) ? 'num' : ''}">${cell(row[c], c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div></section>`;
+  }
 
   function delta(cur, prev, lowerBetter, unit) {
     if (cur === undefined || prev === undefined || prev === 0 && cur === 0) return '';
@@ -79,11 +104,7 @@ ${kmonths.map(x => x === month
 <td class="kw-acts"><a class="ibtn" href="https://www.google.com/search?q=${enc(k.keyword)}" target="_blank" rel="noopener" title="See the live results">↗</a><button class="ibtn" type="button" data-kwdel aria-label="Stop tracking ${esc(k.keyword)}">${U.ICON.close}</button></td></tr>`;
     }).join('');
 
-    return `<div class="vhead"><div><h1>SEO reporting</h1><p>Monthly figures from Search Console, GA4 and the backlink tool, plus shortcuts to the checks we run.</p></div>
-<div class="rpt-ctl"><label class="f"><span class="label">Site</span><input type="text" id="rpt-site" value="${esc(R.site)}"></label>
-<label class="f"><span class="label">Month</span><input type="month" id="rpt-month" value="${month}"></label></div></div>
-
-<div class="rpt">
+    const overview = `<div class="rpt">
 <section class="panel"><div class="panel-h"><h2>Scorecard · ${esc(monthLabel(month))}</h2><span class="muted">${filled} of ${C.SEO_METRICS.length} entered · compared with ${esc(monthLabel(prev))}</span></div>
 <div class="kpis">${cards}</div></section>
 
@@ -100,7 +121,22 @@ ${R.keywords.length ? `<div class="kw-wrap"><table class="kw"><thead><tr><th>Key
 <form class="kw-add" id="kw-add"><input type="text" id="kw-new" placeholder="Keyword, e.g. RTLS for hospitals" maxlength="120"><input type="text" id="kw-new-url" placeholder="Target page (optional)" maxlength="300"><button class="btn primary" type="submit">Add keyword</button></form>
 </section>
 </div>`;
+
+    return `<div class="vhead"><div><h1>SEO reporting</h1><p>Explore Search Console, GA4 and Ahrefs data without leaving the work plan.</p></div>
+<div class="rpt-ctl"><label class="f"><span class="label">Site</span><input type="text" id="rpt-site" value="${esc(R.site)}"></label>
+<label class="f"><span class="label">Month</span><input type="month" id="rpt-month" value="${month}"></label></div></div>
+<div class="report-tabs" role="tablist">${Object.entries(tabNames).map(([key, name]) => `<button type="button" role="tab" aria-selected="${ui.rptTab === key}" class="${ui.rptTab === key ? 'on' : ''}" data-rpt-tab="${key}">${esc(name)}</button>`).join('')}</div>
+${ui.rptTab === 'overview' ? overview : detailPanel(ui.rptTab, month)}`;
   }
 
-  return { render, prevMonth };
+  function setDetail(tab, month, data) { detail[`${tab}:${month}`] = data; }
+  function getDetail(tab, month) { return detail[`${tab}:${month}`]; }
+  function csv(tab, month) {
+    const data = getDetail(tab, month); if (!data?.rows) return;
+    const quote = value => `"${String(value ?? '').replaceAll('"', '""')}"`;
+    const text = [data.columns.map(quote), ...data.rows.map(row => data.columns.map(c => quote(row[c])))].map(row => row.join(',')).join('\r\n');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'text/csv' })); a.download = `airista-${tab}-${month}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  return { render, prevMonth, setDetail, getDetail, csv };
 })();

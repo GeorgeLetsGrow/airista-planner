@@ -35,6 +35,7 @@ Local development: run `npm install`, put `AUTH_SECRET=...` and `INITIAL_USERS=.
 - **SEO tools** links to Search Console, GA4, Looker Studio, Bing Webmaster Tools, Trends and Keyword Planner, plus checks pre-filled for the report site: PageSpeed, Rich Results, schema, robots.txt, sitemap, security headers, backlinks and indexed pages.
 - Nothing is pre-filled with numbers. Report data is stored with the plan, and every change is logged in Daily check-in.
 - **Sync connected data** imports Search Console clicks, impressions, CTR and average position; GA4 organic sessions and key events; and Ahrefs top-10 organic keywords and live referring domains for the selected month. Indexed pages and Core Web Vitals remain manual.
+- **Detailed reporting tabs** load the top Search Console queries and pages, GA4 organic landing pages, and Ahrefs organic keywords and live referring-domain backlinks on demand. Results are searchable, exportable to CSV and cached for four hours to control API usage.
 - The first sync by an admin opens Google's read-only consent flow. The resulting refresh token is encrypted with `AUTH_SECRET` and stored server-side in Netlify Blobs; it is never sent to the browser.
 
 ## Dark mode
