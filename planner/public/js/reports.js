@@ -98,7 +98,6 @@ window.Reports = (() => {
     const last = points[points.length - 1], first = points[0];
     const prevPoint = points.length > 1 && points[points.length - 2].index === last.index - 1 ? points[points.length - 2] : null;
     const best = flip ? Math.min(...nums) : Math.max(...nums), worst = flip ? Math.max(...nums) : Math.min(...nums);
-    const bestPoint = points.findLast(p => p.value === best), worstPoint = points.findLast(p => p.value === worst);
     const dp = Math.max(...nums.map(n => (String(n).split('.')[1] || '').length));
     const lbl = v => short(v, metric.unit, Math.min(dp, 2));
     // Put a point's label below it when its neighbours sit above it on average, so the line never crosses the text.
@@ -106,7 +105,6 @@ window.Reports = (() => {
     const desc = points.map(point => `${monthLabel(point.month)} ${fmtNum(point.value, metric.unit)}`).join(', ');
     const tickDp = step >= 1 ? 0 : Math.min(3, Math.ceil(-Math.log10(step) - 1e-9));
     const fmtTick = t => `${t >= 1e3 ? compact(t) : t.toFixed(tickDp)}${metric.unit || ''}`;
-    const span = monthLabel(first.month).split(' ')[0];
     return `<article class="trend ${srcClass(metric.source)}">
 <div class="trend-h"><div class="trend-t"><b>${esc(metric.label)}</b><span class="trend-src"><i></i>${esc(metric.source)}${flip ? ' · lower is better' : ''}</span></div>
 <div class="trend-now"><strong>${fmtNum(last.value, metric.unit)}</strong>${prevPoint ? change(last.value, prevPoint.value, metric, ` vs ${monthLabel(prevPoint.month).split(' ')[0]}`) : ''}</div></div>
@@ -120,7 +118,7 @@ ${segments.map(s => s.length > 1 ? `<path class="trend-line" d="${path(s)}"/>` :
 ${points.map(point => { const px = x(point.index).toFixed(1), py = y(point.value), isLast = point === last;
       return `<g class="trend-pt${isLast ? ' last' : ''}"><circle cx="${px}" cy="${py.toFixed(1)}" r="${isLast ? 5.5 : 3.5}"/><text class="trend-v" x="${px}" y="${(below(point) ? py + 19 : py - 11).toFixed(1)}">${esc(lbl(point.value))}</text><title>${esc(monthLabel(point.month))}: ${esc(fmtNum(point.value, metric.unit))}</title></g>`; }).join('')}
 </svg>
-<div class="trend-f"><span>Since ${esc(span)} ${change(last.value, first.value, metric, '')}</span><span>Best <b>${esc(lbl(best))}</b> ${esc(monthLabel(bestPoint.month).split(' ')[0])} · Worst <b>${esc(lbl(worst))}</b> ${esc(monthLabel(worstPoint.month).split(' ')[0])}</span></div>
+<div class="trend-f"><span>Six-month change ${change(last.value, first.value, metric, '')}</span><span>${esc(lbl(first.value))} in ${esc(monthLabel(first.month).split(' ')[0])} → <b>${esc(lbl(last.value))}</b> in ${esc(monthLabel(last.month).split(' ')[0])}${points.length > 2 && last.value === best && best !== worst ? ' · <em class="rec good">Best in 6 months</em>' : points.length > 2 && last.value === worst && best !== worst ? ' · <em class="rec bad">Worst in 6 months</em>' : ''}</span></div>
 </article>`;
   }
 
