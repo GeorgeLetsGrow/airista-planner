@@ -48,28 +48,80 @@ window.Reports = (() => {
 
   const compact = value => Math.abs(value) >= 1e6 ? `${(value / 1e6).toFixed(value >= 1e7 ? 0 : 1)}M` : Math.abs(value) >= 1e3 ? `${(value / 1e3).toFixed(value >= 1e4 ? 0 : 1)}k` : Number(value).toLocaleString('en-US', { maximumFractionDigits: 1 });
 
+  const srcClass = source => ({ 'Search Console': 'src-gsc', GA4: 'src-ga4', Ahrefs: 'src-ahrefs' })[source] || 'src-gsc';
+  // Short value for chart labels: full number below 10k, compact above.
+  const short = (value, unit, dp = 0) => (Math.abs(value) >= 1e4 ? compact(value) : Number(value).toLocaleString('en-US', { minimumFractionDigits: dp, maximumFractionDigits: Math.max(dp, 2) })) + (unit || '');
+  const niceStep = (range, count) => {
+    const raw = range / count, mag = Math.pow(10, Math.floor(Math.log10(raw))), n = raw / mag;
+    return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * mag;
+  };
+
+  // Change between two values as a coloured badge, honouring metrics where lower is better.
+  function change(cur, prev, metric, suffix) {
+    if (cur === undefined || prev === undefined) return '';
+    const diff = cur - prev;
+    if (!diff) return `<span class="chg flat">No change${suffix}</span>`;
+    const good = metric.lowerBetter ? diff < 0 : diff > 0;
+    const amount = metric.unit === '%' ? `${Math.abs(diff).toLocaleString('en-US', { maximumFractionDigits: 2 })} pts`
+      : prev ? `${Math.abs(Math.round(diff / Math.abs(prev) * 100))}%` : Math.abs(diff).toLocaleString('en-US');
+    return `<span class="chg ${good ? 'good' : 'bad'}">${diff > 0 ? '▲' : '▼'} ${amount}${suffix}</span>`;
+  }
+
   function trendChart(metric, months, reports) {
     const values = months.map(month => (reports.months[month] || {})[metric.key]);
     const points = values.map((value, index) => value === undefined ? null : { value: Number(value), index, month: months[index] }).filter(Boolean);
     if (points.length < 2) return '';
-    const width = 360, height = 166, left = 54, right = 18, top = 18, bottom = 34;
-    const rawMin = Math.min(...points.map(point => point.value)), rawMax = Math.max(...points.map(point => point.value));
-    const yMin = metric.lowerBetter ? Math.max(0, rawMin - Math.max((rawMax - rawMin) * .2, rawMin * .05)) : 0;
-    const yMax = rawMax === yMin ? yMin + 1 : rawMax + Math.max((rawMax - yMin) * .1, 1);
-    const x = index => left + index * (width - left - right) / Math.max(months.length - 1, 1);
-    const y = value => top + (yMax - value) * (height - top - bottom) / (yMax - yMin);
-    const ticks = [yMax, (yMax + yMin) / 2, yMin];
-    const line = points.map(point => `${x(point.index).toFixed(1)},${y(point.value).toFixed(1)}`).join(' ');
-    const last = points[points.length - 1];
+    const width = 400, height = 200, left = 46, right = 22, top = 26, bottom = 30;
+    const nums = points.map(point => point.value), rawMin = Math.min(...nums), rawMax = Math.max(...nums);
+    // Fit the axis to the data (with headroom for labels) so movement is visible, then round to tidy ticks.
+    const pad = (rawMax - rawMin) * .25 || Math.abs(rawMax) * .1 || 1;
+    let lo = rawMin - pad, hi = rawMax + pad;
+    if (lo < 0) lo = 0;
+    if (metric.unit === '%' && hi > 100) hi = 100;
+    if (metric.lowerBetter && lo < 1) lo = metric.key === 'pos' ? 1 : lo;
+    let step = niceStep(hi - lo, 4);
+    if (metric.int && step < 1) step = 1;
+    lo = Math.max(0, Math.floor(lo / step) * step); hi = Math.ceil(hi / step) * step;
+    if (hi === lo) hi = lo + step;
+    const ticks = []; for (let t = lo; t <= hi + step / 1e6; t += step) ticks.push(+t.toFixed(6));
+    // For "lower is better" metrics (average position) flip the axis so up always means better.
+    const flip = !!metric.lowerBetter;
+    const inset = 18, x = index => left + inset + index * (width - left - right - inset * 2) / Math.max(months.length - 1, 1);
+    const y = value => { const f = (value - lo) / (hi - lo); return top + (flip ? f : 1 - f) * (height - top - bottom); };
+    const base = height - bottom;
+    // Break the line where a month is missing.
+    const segments = []; let seg = [];
+    values.forEach((value, index) => { if (value === undefined) { if (seg.length) segments.push(seg); seg = []; } else seg.push({ x: x(index), y: y(Number(value)) }); });
+    if (seg.length) segments.push(seg);
+    const path = s => s.map((p, i) => `${i ? 'L' : 'M'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join('');
+    const area = s => s.length < 2 ? '' : `<path class="trend-area" fill="url(#tg-${metric.key})" d="${path(s)}L${s[s.length - 1].x.toFixed(1)},${base}L${s[0].x.toFixed(1)},${base}Z"/>`;
+    const last = points[points.length - 1], first = points[0];
+    const prevPoint = points.length > 1 && points[points.length - 2].index === last.index - 1 ? points[points.length - 2] : null;
+    const best = flip ? Math.min(...nums) : Math.max(...nums), worst = flip ? Math.max(...nums) : Math.min(...nums);
+    const bestPoint = points.findLast(p => p.value === best), worstPoint = points.findLast(p => p.value === worst);
+    const dp = Math.max(...nums.map(n => (String(n).split('.')[1] || '').length));
+    const lbl = v => short(v, metric.unit, Math.min(dp, 2));
+    // Put a point's label below it when its neighbours sit above it on average, so the line never crosses the text.
+    const below = point => { const near = points.filter(p => Math.abs(p.index - point.index) === 1); return near.length > 0 && near.reduce((sum, p) => sum + y(p.value) - y(point.value), 0) / near.length < -6 && y(point.value) + 20 < base; };
     const desc = points.map(point => `${monthLabel(point.month)} ${fmtNum(point.value, metric.unit)}`).join(', ');
-    return `<article class="trend"><div class="trend-h"><div><b>${esc(metric.label)}</b><span>${esc(metric.source)}</span></div><strong>${fmtNum(last.value, metric.unit)}</strong></div>
+    const tickDp = step >= 1 ? 0 : Math.min(3, Math.ceil(-Math.log10(step) - 1e-9));
+    const fmtTick = t => `${t >= 1e3 ? compact(t) : t.toFixed(tickDp)}${metric.unit || ''}`;
+    const span = monthLabel(first.month).split(' ')[0];
+    return `<article class="trend ${srcClass(metric.source)}">
+<div class="trend-h"><div class="trend-t"><b>${esc(metric.label)}</b><span class="trend-src"><i></i>${esc(metric.source)}${flip ? ' · lower is better' : ''}</span></div>
+<div class="trend-now"><strong>${fmtNum(last.value, metric.unit)}</strong>${prevPoint ? change(last.value, prevPoint.value, metric, ` vs ${monthLabel(prevPoint.month).split(' ')[0]}`) : ''}</div></div>
 <svg class="trend-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="${esc(metric.label)} trend: ${esc(desc)}"><title>${esc(metric.label)} · six-month trend</title>
-${ticks.map(tick => `<line class="trend-grid" x1="${left}" x2="${width - right}" y1="${y(tick).toFixed(1)}" y2="${y(tick).toFixed(1)}"/><text class="trend-y" x="${left - 8}" y="${(y(tick) + 4).toFixed(1)}">${esc(compact(tick))}${metric.unit || ''}</text>`).join('')}
-<line class="trend-axis" x1="${left}" x2="${width - right}" y1="${height - bottom}" y2="${height - bottom}"/>
-<polyline class="trend-line" points="${line}"/>
-${points.map(point => `<circle class="trend-dot" cx="${x(point.index).toFixed(1)}" cy="${y(point.value).toFixed(1)}" r="4"><title>${esc(monthLabel(point.month))}: ${esc(fmtNum(point.value, metric.unit))}</title></circle>`).join('')}
-${months.map((month, index) => `<text class="trend-x" x="${x(index).toFixed(1)}" y="${height - 10}">${esc(monthLabel(month).split(' ')[0])}</text>`).join('')}
-</svg></article>`;
+<defs><linearGradient id="tg-${metric.key}" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="currentColor" stop-opacity=".28"/><stop offset="1" stop-color="currentColor" stop-opacity="0"/></linearGradient></defs>
+${ticks.map(tick => `<line class="trend-grid" x1="${left}" x2="${width - right}" y1="${y(tick).toFixed(1)}" y2="${y(tick).toFixed(1)}"/><text class="trend-y" x="${left - 8}" y="${(y(tick) + 4).toFixed(1)}">${esc(fmtTick(tick))}</text>`).join('')}
+${months.map((month, index) => `<text class="trend-x${index === months.length - 1 ? ' cur' : ''}" x="${x(index).toFixed(1)}" y="${height - 8}">${esc(monthLabel(month).split(' ')[0])}</text>`).join('')}
+${segments.map(area).join('')}
+${segments.slice(1).map((s, i) => { const a = segments[i][segments[i].length - 1]; return `<path class="trend-gap" d="M${a.x.toFixed(1)},${a.y.toFixed(1)}L${s[0].x.toFixed(1)},${s[0].y.toFixed(1)}"><title>No data for the missing month</title></path>`; }).join('')}
+${segments.map(s => s.length > 1 ? `<path class="trend-line" d="${path(s)}"/>` : '').join('')}
+${points.map(point => { const px = x(point.index).toFixed(1), py = y(point.value), isLast = point === last;
+      return `<g class="trend-pt${isLast ? ' last' : ''}"><circle cx="${px}" cy="${py.toFixed(1)}" r="${isLast ? 5.5 : 3.5}"/><text class="trend-v" x="${px}" y="${(below(point) ? py + 19 : py - 11).toFixed(1)}">${esc(lbl(point.value))}</text><title>${esc(monthLabel(point.month))}: ${esc(fmtNum(point.value, metric.unit))}</title></g>`; }).join('')}
+</svg>
+<div class="trend-f"><span>Since ${esc(span)} ${change(last.value, first.value, metric, '')}</span><span>Best <b>${esc(lbl(best))}</b> ${esc(monthLabel(bestPoint.month).split(' ')[0])} · Worst <b>${esc(lbl(worst))}</b> ${esc(monthLabel(worstPoint.month).split(' ')[0])}</span></div>
+</article>`;
   }
 
   function tools(site) {
@@ -129,7 +181,7 @@ ${kmonths.map(x => x === month
 <section class="panel"><div class="panel-h"><h2>Scorecard · ${esc(monthLabel(month))}</h2><span class="muted">${filled} of ${C.SEO_METRICS.length} entered · compared with ${esc(monthLabel(prev))}</span></div>
 <div class="kpis">${cards}</div></section>
 
-${trends ? `<section class="panel"><div class="panel-h"><div><h2>Six-month trends</h2><span class="muted">Monthly totals through ${esc(monthLabel(month))} · hover a point for its exact value</span></div></div><div class="trends">${trends}</div></section>` : ''}
+${trends ? `<section class="panel"><div class="panel-h"><div><h2>Six-month trends</h2><span class="muted">Monthly totals through ${esc(monthLabel(month))} · higher on the chart is always better</span></div></div><div class="trends">${trends}</div></section>` : ''}
 
 <div class="rpt-2">
 <section class="panel"><div class="panel-h"><h2>Enter ${esc(monthLabel(month))} figures</h2><div class="rpt-actions"><button class="btn primary sm" type="button" id="rpt-sync">Pull ${esc(monthLabel(month))} data</button><button class="btn sm" type="button" id="rpt-toggle">${ui.rptEdit ? 'Hide' : 'Edit figures'}</button></div></div>
@@ -147,7 +199,7 @@ ${R.keywords.length ? `<div class="kw-wrap"><table class="kw"><thead><tr><th>Key
 </div>`;
 
     return `<div class="vhead"><div><h1>SEO reporting</h1><p>Explore Search Console, GA4 and Ahrefs data without leaving the work plan.</p></div>
-<div class="rpt-ctl"><label class="f"><span class="label">Site</span><input type="text" id="rpt-site" value="${esc(R.site)}"></label>
+<div class="rpt-ctl"><label class="f"><span class="label">Site</span><input type="text" id="rpt-site" value="${esc(R.site)}" readonly disabled title="The report site is fixed"></label>
 <div class="f"><span class="label">Month</span><div class="rpt-actions"><input type="month" id="rpt-month" value="${month}" aria-label="Month"><button class="btn sm" type="button" id="rpt-month-view">View month</button></div></div></div></div>
 <div class="report-tabs" role="tablist">${Object.entries(tabNames).map(([key, name]) => `<button type="button" role="tab" aria-selected="${ui.rptTab === key}" class="${ui.rptTab === key ? 'on' : ''}" data-rpt-tab="${key}">${esc(name)}</button>`).join('')}</div>
 ${ui.rptTab === 'overview' ? overview : detailPanel(ui.rptTab, month)}`;

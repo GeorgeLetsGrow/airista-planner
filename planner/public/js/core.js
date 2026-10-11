@@ -135,8 +135,7 @@ function numOrBlank(v) {
 function applyReportOp(state, op, at, by) {
   var R = ensureReports(state);
   if (op.t === 'rpt-site') {
-    var s = String(op.site || '').trim().slice(0, 300);
-    if (/^https?:\/\/[^\s]+$/i.test(s) && s !== R.site) { addLog(state, at, by, 'Report site set to ' + s); R.site = s.replace(/\/$/, ''); }
+    return; // The report site is fixed; ignore attempts to change it.
   } else if (op.t === 'rpt-metric' && MONTH_RE.test(op.month)) {
     var m = SEO_METRICS.find(function (x) { return x.key === op.key; }), v = numOrBlank(op.value);
     if (!m || v === null) return;

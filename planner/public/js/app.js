@@ -243,7 +243,6 @@ ${u.email === St.user.email ? '<span class="urm"></span>' : `<button class="ibtn
     if (t.id === 'hrs-in') return St.dispatch({ t: 'hours', value: Number(t.value) });
     if (t.id === 'ci-date') { ui.noteDate = t.value || U.today(); return render(); }
     if (t.id === 'rpt-month') { selectReportMonth(t.value); return; }
-    if (t.id === 'rpt-site') return St.dispatch({ t: 'rpt-site', site: t.value.trim() });
     if (t.dataset.rpt) return St.dispatch({ t: 'rpt-metric', month: ui.rptMonth, key: t.dataset.rpt, value: t.value.trim() });
     if (t.hasAttribute('data-kwpos')) return St.dispatch({ t: 'kw-pos', id: t.closest('[data-kw]').dataset.kw, month: ui.rptMonth, value: t.value.trim() });
     if (t.hasAttribute('data-kwurl')) return St.dispatch({ t: 'kw-url', id: t.closest('[data-kw]').dataset.kw, url: t.value.trim() });
