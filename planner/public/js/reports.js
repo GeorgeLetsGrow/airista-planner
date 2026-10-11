@@ -71,7 +71,7 @@ window.Reports = (() => {
     const values = months.map(month => (reports.months[month] || {})[metric.key]);
     const points = values.map((value, index) => value === undefined ? null : { value: Number(value), index, month: months[index] }).filter(Boolean);
     if (points.length < 2) return '';
-    const width = 400, height = 200, left = 46, right = 22, top = 26, bottom = 30;
+    const width = 360, height = 170, left = 44, right = 20, top = 24, bottom = 28;
     const nums = points.map(point => point.value), rawMin = Math.min(...nums), rawMax = Math.max(...nums);
     // Fit the axis to the data (with headroom for labels) so movement is visible, then round to tidy ticks.
     const pad = (rawMax - rawMin) * .25 || Math.abs(rawMax) * .1 || 1;
