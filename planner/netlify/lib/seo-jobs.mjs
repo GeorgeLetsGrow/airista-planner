@@ -11,7 +11,8 @@ import { requireSecret } from "./users.mjs";
 
 const BLOBS_PKG = ["@netlify", "blobs"].join("/");
 const env = (name) => globalThis.Netlify?.env?.get?.(name) ?? globalThis.process?.env?.[name] ?? "";
-export const RUN_PATH = "/api/seo-crawl-run";
+// Background functions ignore custom paths, so the runner lives at its default URL.
+export const RUN_PATH = "/.netlify/functions/seo-crawl-run-background";
 const RUN_BUDGET_MS = 11 * 60 * 1000;   // background functions stop at 15 minutes
 const PAGE_BATCH = 20, LINK_BATCH = 40;
 export const STALE_MS = 6 * 60 * 1000;  // a runner that has not checkpointed for this long is presumed dead

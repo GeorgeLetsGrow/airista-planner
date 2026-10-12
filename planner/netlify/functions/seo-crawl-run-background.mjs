@@ -3,7 +3,7 @@
 // Authenticated by a short-lived signed token instead of a session cookie.
 import { verify } from "../lib/token.mjs";
 import { requireSecret } from "../lib/users.mjs";
-import { seoStore, runSteps, kick, RUN_PATH } from "../lib/seo-jobs.mjs";
+import { seoStore, runSteps, kick } from "../lib/seo-jobs.mjs";
 
 export default async (req) => {
   if (req.method !== "POST") return;
@@ -19,4 +19,4 @@ export default async (req) => {
   }
 };
 
-export const config = { path: RUN_PATH, background: true };
+export const config = { background: true };
