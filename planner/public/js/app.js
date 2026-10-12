@@ -52,7 +52,7 @@
     });
   }
 
-  function setView(v) { ui.view = v; history.replaceState(null, '', '#' + v); persist(); render(); window.scrollTo(0, 0); }
+  function setView(v) { ui.view = v; history.replaceState(null, '', '#' + v); persist(); render(); window.scrollTo(0, 0); if (v === 'reports' && ui.rptTab === 'health') openReportTab(); }
   function openItem(id) { ui.drawerId = id; ui.tab = 'comments'; renderDrawer(); }
   function closeDrawer() { ui.drawerId = null; renderDrawer(); document.querySelectorAll('.tcard.sel').forEach(c => c.classList.remove('sel')); }
 
@@ -167,7 +167,13 @@ ${u.email === St.user.email ? '<span class="urm"></span>' : `<button class="ibtn
     ui.rptMonth = value; persist();
     if (document.activeElement?.id === 'rpt-month') document.activeElement.blur();
     render();
-    if (ui.rptTab !== 'overview') loadReportDetail(ui.rptTab, false, value);
+    if (isDetailTab(ui.rptTab)) loadReportDetail(ui.rptTab, false, value);
+  }
+  const isDetailTab = tab => ['search', 'traffic', 'links'].includes(tab);
+  // Weekly health has its own data and refresh loop; the other detail tabs load a monthly snapshot.
+  function openReportTab() {
+    if (ui.rptTab === 'health') return window.Health.open(() => ui.view === 'reports' && ui.rptTab === 'health', render);
+    if (isDetailTab(ui.rptTab)) loadReportDetail(ui.rptTab);
   }
 
   // clicks
@@ -177,7 +183,9 @@ ${u.email === St.user.email ? '<span class="urm"></span>' : `<button class="ibtn
     const jump = t.closest('[data-jump]'); if (jump) return setView(jump.dataset.jump);
     if (t.closest('#who')) return account();
     if (t.closest('#theme')) { window.Theme.toggle(); return themeIcon(); }
-    const rptTab = t.closest('[data-rpt-tab]'); if (rptTab) { ui.rptTab = rptTab.dataset.rptTab; persist(); render(); if (ui.rptTab !== 'overview') loadReportDetail(ui.rptTab); return; }
+    const rptTab = t.closest('[data-rpt-tab]'); if (rptTab) { ui.rptTab = rptTab.dataset.rptTab; persist(); render(); openReportTab(); return; }
+    if (t.closest('#hk-run')) return window.Health.run();
+    const hkDate = t.closest('[data-hk-date]'); if (hkDate) return window.Health.select(hkDate.dataset.hkDate);
     const rptLoad = t.closest('[data-rpt-load]'); if (rptLoad) return loadReportDetail(rptLoad.dataset.rptLoad, true);
     const rptCsv = t.closest('[data-rpt-csv]'); if (rptCsv) return window.Reports.csv(rptCsv.dataset.rptCsv, ui.rptMonth);
     if (t.closest('#rpt-overview-csv')) return window.Reports.overviewCsv(St.state, ui.rptMonth);
@@ -316,5 +324,5 @@ ${u.email === St.user.email ? '<span class="urm"></span>' : `<button class="ibtn
 
   St.subscribe(render);
   setupFilters();
-  St.init().then(() => { const el = $('#f-owner'), o = p => `<option value="${esc(p)}">${esc(p)}</option>`; el.innerHTML = '<option value="">All owners</option>' + St.people.map(o).join(''); el.value = ui.f.owner || ''; if (ui.view === 'reports' && ui.rptTab !== 'overview') loadReportDetail(ui.rptTab); }).catch(() => {});
+  St.init().then(() => { const el = $('#f-owner'), o = p => `<option value="${esc(p)}">${esc(p)}</option>`; el.innerHTML = '<option value="">All owners</option>' + St.people.map(o).join(''); el.value = ui.f.owner || ''; if (ui.view === 'reports') openReportTab(); }).catch(() => {});
 })();

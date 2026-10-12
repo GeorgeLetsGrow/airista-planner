@@ -10,7 +10,7 @@ window.Reports = (() => {
   const lastMonths = (end, n) => { const out = [end]; while (out.length < n) out.unshift(prevMonth(out[0])); return out; };
   const fmtNum = (v, unit) => v === undefined || v === '' ? '—' : Number(v).toLocaleString('en-US', { maximumFractionDigits: 2 }) + (unit || '');
 
-  const tabNames = { overview: 'Overview', search: 'Search performance', traffic: 'Traffic & conversions', links: 'Links & rankings' };
+  const tabNames = { overview: 'Overview', health: 'Weekly health', search: 'Search performance', traffic: 'Traffic & conversions', links: 'Links & rankings' };
   const labels = { item: 'Query or page', kind: 'Type', clicks: 'Clicks', impressions: 'Impressions', ctr: 'CTR', position: 'Position', landingPage: 'Landing page', sessions: 'Sessions', activeUsers: 'Active users', keyEvents: 'Key events', type: 'Type', primary: 'Keyword or referring domain', traffic: 'Est. traffic', detail: 'Country or anchor', url: 'Source / ranking URL', target: 'Target URL' };
   const numeric = new Set(['clicks', 'impressions', 'ctr', 'position', 'sessions', 'activeUsers', 'keyEvents', 'traffic']);
 
@@ -200,7 +200,7 @@ ${R.keywords.length ? `<div class="kw-wrap"><table class="kw"><thead><tr><th>Key
 <div class="rpt-ctl"><label class="f"><span class="label">Site</span><input type="text" id="rpt-site" value="${esc(R.site)}" readonly disabled title="The report site is fixed"></label>
 <div class="f"><span class="label">Month</span><div class="rpt-actions"><input type="month" id="rpt-month" value="${month}" aria-label="Month"><button class="btn sm" type="button" id="rpt-month-view">View month</button></div></div></div></div>
 <div class="report-tabs" role="tablist">${Object.entries(tabNames).map(([key, name]) => `<button type="button" role="tab" aria-selected="${ui.rptTab === key}" class="${ui.rptTab === key ? 'on' : ''}" data-rpt-tab="${key}">${esc(name)}</button>`).join('')}</div>
-${ui.rptTab === 'overview' ? overview : detailPanel(ui.rptTab, month)}`;
+${ui.rptTab === 'overview' ? overview : ui.rptTab === 'health' ? window.Health.render() : detailPanel(ui.rptTab, month)}`;
   }
 
   function setDetail(tab, month, data) { if (data) detail[`${tab}:${month}`] = data; else delete detail[`${tab}:${month}`]; }

@@ -8,7 +8,8 @@ const PUBLIC = new Set(["/login", "/login.html", "/js/login.js", "/js/theme.js",
 export default async (req, context) => {
   const url = new URL(req.url);
   const p = url.pathname;
-  if (PUBLIC.has(p) || p.startsWith("/tokens/") || p.startsWith("/api/auth/")) return context.next();
+  // /api/seo-crawl-run is server-to-server (scheduled crawl) and verifies its own signed token.
+  if (PUBLIC.has(p) || p.startsWith("/tokens/") || p.startsWith("/api/auth/") || p === "/api/seo-crawl-run") return context.next();
 
   const session = await verify(getCookie(req, SESSION_COOKIE), getSecret(), "s");
   if (session) return context.next();

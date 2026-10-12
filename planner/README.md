@@ -38,6 +38,16 @@ Local development: run `npm install`, put `AUTH_SECRET=...` and `INITIAL_USERS=.
 - **Detailed reporting tabs** load the top Search Console queries and pages, GA4 organic landing pages, and Ahrefs organic keywords and live referring-domain backlinks on demand. Results are searchable, exportable to CSV and saved as persistent seven-day snapshots so page reloads do not spend API usage.
 - The first sync by an admin opens Google's read-only consent flow. The resulting refresh token is encrypted with `AUTH_SECRET` and stored server-side in Netlify Blobs; it is never sent to the browser.
 
+## Weekly SEO health check
+The **Reports → Weekly health** tab replaces the weekly Claude monitoring run (`seo_crawl.py` + weekly report). It is read-only: nothing on the website or WordPress is changed.
+- **Schedule:** `netlify/functions/seo-weekly.mjs` runs every 10 minutes. From 8am New York time on Mondays it starts that week's crawl once. It also restarts any crawl whose runner has gone quiet. Anyone signed in can also click **Run crawl now**.
+- **Crawl:** `netlify/lib/seo-crawl.mjs` is a port of `seo/scripts/seo_crawl.py`. It uses the same sitemap, checks, thresholds and Cloudflare-safe pace (one request per second, 2 workers). A full crawl takes about 15 minutes, which is longer than one function can run. So `seo-crawl-run-background.mjs` works in checkpointed batches stored in the `airista-seo` Blobs store, and calls itself again to continue. It is authenticated by a short-lived token signed with `AUTH_SECRET`.
+- **Report:** `netlify/lib/seo-report.mjs` compares each crawl with the previous snapshot. It writes Status, What changed, New high-severity issues, Priority pages check and up to 5 Recommended actions. It is rule-based, and every number comes from the crawl, Search Console or GA4. Material changes lead the report: a new high issue; a change to a priority page's status, title, canonical or robots; a missing robots.txt, llms.txt or sitemap; or pages dropping out of the sitemap.
+- **Search Console and GA4:** these cover the last full Sunday to Saturday week, compared with the week before. They use the Google connection from the Reports tab. If Google isn't connected, those sections are marked "data pending".
+- **Exports:** a client workbook (.xlsx, the same tabs as `seo/reports/weekly/<date>.xlsx`), Markdown, and CSVs of issues, broken links and pages.
+- **Settings** (site, priority pages, thresholds, schedule) live in `netlify/lib/seo-config.mjs`, mirroring `seo/config.json`. `SEO_SITE` overrides the site URL.
+- **Local check:** `node scripts/local-crawl.mjs <seo/data/crawls> <out dir>` runs the whole pipeline against the live site with an in-memory store, seeding the previous snapshots from the Python crawler. `node scripts/replay-crawl.mjs <seo/data/crawls> <date> <prevDate>` rebuilds a report from an existing Python crawl.
+
 ## Dark mode
 The moon/sun button in the header switches themes. The choice is saved per browser; without one, the app follows the operating system setting.
 
