@@ -10,7 +10,7 @@ var WS_TYPE = { pm: 'paid', lp: 'dev', seo: 'seo', con: 'seo', off: 'seo', web: 
 function typeOf(it) { return it.type || WS_TYPE[it.ws] || 'dev'; }
 // Owner choices come from the account list at runtime (Store.people); AiRISTA is the client organization.
 var PEOPLE = ['AiRISTA'];
-var EDITABLE = ['type', 'status', 'priority', 'lane', 'owner', 'due', 'agreed', 'blocker', 'evidence'];
+var EDITABLE = ['title', 'next', 'type', 'status', 'priority', 'lane', 'owner', 'due', 'agreed', 'blocker', 'evidence'];
 var WS = [
   { id: 'pm', name: 'Paid Media', counters: ['weekly'] },
   { id: 'lp', name: 'Landing Pages and Conversion', counters: ['lpopt'], note: 'New page development is separate from recurring optimization unless agreed in writing.' },
@@ -71,6 +71,8 @@ function seed() {
     ['mr', [], 'ip', '2026-10-16', 'Weekly paid media updates', 'Send next weekly update', 'week', 'med', { cadence: 'Weekly' }],
     ['mr', [], 'ns', '2026-11-05', 'Monthly integrated report', 'Prepare October report', 'later', 'med', { cadence: 'Monthly' }],
     ['mr', [], 'ns', '2026-12-18', 'Quarterly business review', 'Schedule with AiRISTA', 'later', 'low']
+    ,['mr', ['Katherine'], 'ns', '2026-10-17', 'Ask Amit why the Google Tag conversion linker was removed', 'Ask Amit what prompted the removal, what it affected and whether it should be restored', 'today', 'high']
+    ,['mr', ['Katherine'], 'ns', '2026-10-24', 'Clean up GTM admin access and remove Amit', 'Review GTM administrators, confirm who still needs access and remove Amit from the applicable accounts', 'week', 'high']
   ];
   var at = '2026-10-10T09:00:00.000Z', laneCount = { today: 0, week: 0, later: 0 };
   var items = raw.map(function (r, n) {
@@ -93,6 +95,35 @@ function seed() {
     access: [{ name: 'Google Ads', ok: true }, { name: 'LinkedIn Ads', ok: true }, { name: 'GA4', ok: true }, { name: 'GTM', ok: false }, { name: 'Search Console', ok: false }, { name: 'Website admin', ok: true }, { name: 'CRM', ok: false }],
     notes: {}, log: []
   };
+}
+
+// Add required deliverables introduced after the initial shared store was created.
+// Stable IDs make this migration idempotent and give every task a durable share URL.
+function migrate(state, meta) {
+  if (!state || !Array.isArray(state.items)) return false;
+  var templates = seed().items.filter(function (it) { return it.id === 'd43' || it.id === 'd44'; });
+  var changed = false, at = meta && meta.at || new Date().toISOString(), by = meta && meta.by || 'Planner update';
+  templates.forEach(function (template) {
+    if (state.items.some(function (it) { return it.id === template.id; })) return;
+    var item = JSON.parse(JSON.stringify(template));
+    item.updatedAt = at;
+    item.history = [{ at: at, by: by, field: 'import', text: 'Added from planner update' }];
+    state.items.push(item);
+    addLog(state, at, by, 'Added deliverable: ' + item.title);
+    changed = true;
+  });
+  ['d43', 'd44'].forEach(function (id) {
+    var item = state.items.find(function (it) { return it.id === id; });
+    if (!item || !Array.isArray(item.owner) || item.owner.indexOf('Catherine') < 0) return;
+    var before = item.owner.slice();
+    item.owner = item.owner.map(function (name) { return name === 'Catherine' ? 'Katherine' : name; });
+    item.history.unshift({ at: at, by: by, field: 'owner', from: fmtVal('owner', before), to: fmtVal('owner', item.owner) });
+    item.updatedAt = at; changed = true;
+  });
+  state.items.forEach(function (item) { if (!Array.isArray(item.attachments)) { item.attachments = []; changed = true; } });
+  if (!Array.isArray(state.notifications)) { state.notifications = []; changed = true; }
+  if (changed) { state.version = Math.max(5, Number(state.version) || 0); state.updatedAt = at; }
+  return changed;
 }
 
 function fmtVal(f, v) {
@@ -177,6 +208,12 @@ function applyOps(state, ops, meta) {
         if (JSON.stringify(prev) === JSON.stringify(v)) return;
         it.history.unshift({ at: at, by: by, field: k, from: fmtVal(k, prev), to: fmtVal(k, v) });
         it[k] = v; it.updatedAt = at;
+        if (k === 'owner' && Array.isArray(v)) {
+          if (!Array.isArray(state.notifications)) state.notifications = [];
+          v.filter(function (name) { return (!Array.isArray(prev) || prev.indexOf(name) < 0) && name && name !== by && name !== 'AiRISTA'; }).forEach(function (name) {
+            state.notifications.unshift({ id: 'n' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7), type: 'assignment', to: name, by: by, itemId: it.id, text: 'Assigned you to ' + it.title, at: at, read: false });
+          });
+        }
       });
     } else if (op.t === 'place' && it && LANES[op.lane]) {
       var list = state.items.filter(function (i) { return i.lane === op.lane && i.id !== it.id; }).sort(byOrder);
@@ -186,8 +223,27 @@ function applyOps(state, ops, meta) {
       if (it.lane !== op.lane) { it.history.unshift({ at: at, by: by, field: 'lane', from: fmtVal('lane', it.lane), to: fmtVal('lane', op.lane) }); it.lane = op.lane; it.updatedAt = at; }
       list.forEach(function (x, n) { x.order = n; });
     } else if (op.t === 'comment' && it && op.text && String(op.text).trim()) {
-      it.comments.push({ id: 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), at: at, by: by, text: String(op.text).trim().slice(0, 4000) });
+      var commentId = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), commentText = String(op.text).trim().slice(0, 4000);
+      it.comments.push({ id: commentId, at: at, by: by, text: commentText });
       it.history.unshift({ at: at, by: by, field: 'comment', text: 'Added a comment' }); it.updatedAt = at;
+      if (!Array.isArray(state.notifications)) state.notifications = [];
+      (Array.isArray(op.mentions) ? op.mentions : []).map(function (name) { return String(name || '').trim().slice(0, 80); }).filter(function (name, n, all) { return name && name !== by && all.indexOf(name) === n; }).forEach(function (name) {
+        state.notifications.unshift({ id: 'n' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7), type: 'mention', to: name, by: by, itemId: it.id, commentId: commentId, text: commentText, at: at, read: false });
+      });
+      if (state.notifications.length > 500) state.notifications.length = 500;
+    } else if (op.t === 'notification-read') {
+      if (!Array.isArray(state.notifications)) state.notifications = [];
+      state.notifications.forEach(function (n) { if (n.id === op.notificationId && n.to === by) n.read = true; });
+    } else if (op.t === 'attachment-add' && it && op.attachment) {
+      if (!Array.isArray(it.attachments)) it.attachments = [];
+      var file = op.attachment;
+      if (!file.id || it.attachments.some(function (a) { return a.id === file.id; })) return;
+      it.attachments.push({ id: String(file.id).slice(0, 160), name: String(file.name || 'Attachment').slice(0, 240), size: Math.max(0, Number(file.size) || 0), type: String(file.type || 'application/octet-stream').slice(0, 120), by: by, at: at });
+      it.history.unshift({ at: at, by: by, field: 'attachment', text: 'Attached ' + String(file.name || 'a file').slice(0, 240) }); it.updatedAt = at;
+    } else if (op.t === 'attachment-remove' && it) {
+      if (!Array.isArray(it.attachments)) it.attachments = [];
+      var removed = it.attachments.find(function (a) { return a.id === op.attachmentId; });
+      if (removed) { it.attachments = it.attachments.filter(function (a) { return a !== removed; }); it.history.unshift({ at: at, by: by, field: 'attachment', text: 'Removed attachment ' + removed.name }); it.updatedAt = at; }
     } else if (op.t === 'hours') {
       var h = Math.max(0, Math.round(Number(op.value) * 4) / 4);
       if (!isNaN(h) && h !== state.hours.used) { addLog(state, at, by, 'Support hours ' + state.hours.used + ' → ' + h + ' h'); state.hours.used = h; }
@@ -212,5 +268,5 @@ function applyOps(state, ops, meta) {
   return state;
 }
 
-return { TYPES: TYPES, typeOf: typeOf, STATUS: STATUS, PRIORITY: PRIORITY, LANES: LANES, PEOPLE: PEOPLE, WS: WS, ROADMAP: ROADMAP, SEO_METRICS: SEO_METRICS, ensureReports: ensureReports, seed: seed, applyOps: applyOps };
+return { TYPES: TYPES, typeOf: typeOf, STATUS: STATUS, PRIORITY: PRIORITY, LANES: LANES, PEOPLE: PEOPLE, WS: WS, ROADMAP: ROADMAP, SEO_METRICS: SEO_METRICS, ensureReports: ensureReports, seed: seed, migrate: migrate, applyOps: applyOps };
 });

@@ -101,7 +101,7 @@ ${w.note ? `<div class="note"><b>Note</b><span>${esc(w.note)}</span></div>` : ''
     return out.sort((a, b) => b.at.localeCompare(a.at)).slice(0, 80);
   }
   const histText = h => h.field && h.from !== undefined
-    ? `changed <b>${esc({ type: 'type', status: 'status', priority: 'priority', lane: 'lane', owner: 'owner', due: 'target date', agreed: 'date', blocker: 'blocker', evidence: 'evidence' }[h.field] || h.field)}</b> <em>${esc(h.from)}</em> → ${esc(h.to)}`
+    ? `changed <b>${esc({ title: 'title', next: 'next action', type: 'type', status: 'status', priority: 'priority', lane: 'lane', owner: 'owner', due: 'target date', agreed: 'date', blocker: 'blocker', evidence: 'evidence' }[h.field] || h.field)}</b> <em>${esc(h.from)}</em> → ${esc(h.to)}`
     : esc(h.text);
 
   function checkin(state, ui) {
