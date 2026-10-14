@@ -68,6 +68,21 @@
       modal.onclick = e => { const b = e.target.closest('[data-m]'); if (b || e.target === modal) { hideModal(); modal.onclick = null; res(!!(b && b.dataset.m === '1')); } };
     });
   }
+  function addTaskForm() {
+    const option = (value, label, selected) => `<option value="${esc(value)}" ${selected ? 'selected' : ''}>${esc(label)}</option>`;
+    showModal(`<h2>Add a new task</h2><p class="muted">Create a task and add it to the shared work plan.</p>
+<form id="task-add-form" class="fgrid">
+<label class="f full"><span class="label">Task title</span><input type="text" id="task-title" maxlength="200" placeholder="What needs to be done?" required autofocus></label>
+<label class="f"><span class="label">Workstream</span><select id="task-ws">${C.WS.map(w => option(w.id, w.name, w.id === (ui.f.ws || 'pm'))).join('')}</select></label>
+<label class="f"><span class="label">Due date</span><input type="date" id="task-due"></label>
+<label class="f"><span class="label">Priority</span><select id="task-priority">${Object.entries(C.PRIORITY).map(([k, l]) => option(k, l, k === 'med')).join('')}</select></label>
+<label class="f"><span class="label">Priority lane</span><select id="task-lane">${Object.entries(C.LANES).map(([k, l]) => option(k, l, k === 'later')).join('')}</select></label>
+<label class="f full"><span class="label">Next action <span class="muted">(optional)</span></span><input type="text" id="task-next" maxlength="2000" placeholder="The first concrete step"></label>
+<p class="auth-err full" id="task-add-err" hidden></p>
+<div class="acts full"><button class="btn" type="button" data-m="close">Cancel</button><button class="btn primary" type="submit">Add task</button></div></form>`);
+    modal.querySelector('.mbox').classList.add('wide');
+    setTimeout(() => $('#task-title')?.focus(), 0);
+  }
   let mentionIndex = 0;
   function mentionCandidates(ta) {
     const before = ta.value.slice(0, ta.selectionStart), match = before.match(/(^|\s)@([^\s@]*)$/);
@@ -214,6 +229,13 @@ ${u.email === St.user.email ? '<span class="urm"></span>' : `<button class="ibtn
   });
   modal.addEventListener('submit', async e => {
     e.preventDefault();
+    if (e.target.id === 'task-add-form') {
+      const title = $('#task-title').value.trim();
+      if (!title) return errOut('#task-add-err', 'Enter a task title.');
+      const id = 't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+      St.dispatch({ t: 'add', id, title, ws: $('#task-ws').value, due: $('#task-due').value, priority: $('#task-priority').value, lane: $('#task-lane').value, next: $('#task-next').value.trim() });
+      hideModal(); openItem(id); return;
+    }
     if (e.target.id === 'pwform') {
       const cur = $('#pw-cur').value, pw = $('#pw-new').value;
       if (pw.length < 10) return errOut('#pw-err', 'Use at least 10 characters.');
@@ -274,6 +296,7 @@ ${u.email === St.user.email ? '<span class="urm"></span>' : `<button class="ibtn
   // clicks
   document.addEventListener('click', e => {
     const t = e.target;
+    if (t.closest('#add-task')) return addTaskForm();
     const tab = t.closest('#tabs button'); if (tab) return setView(tab.dataset.view);
     const jump = t.closest('[data-jump]'); if (jump) return setView(jump.dataset.jump);
     if (t.closest('#who')) return account();

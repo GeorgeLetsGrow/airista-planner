@@ -198,7 +198,19 @@ function applyOps(state, ops, meta) {
   var at = meta.at, by = meta.by;
   (ops || []).forEach(function (op) {
     var it = op.id ? state.items.find(function (i) { return i.id === op.id; }) : null;
-    if (op.t === 'set' && it) {
+    if (op.t === 'add') {
+      var title = String(op.title || '').trim().slice(0, 200), id = String(op.id || '').trim().slice(0, 80);
+      if (!title || !id || state.items.some(function (i) { return i.id === id; })) return;
+      var ws = WS.some(function (w) { return w.id === op.ws; }) ? op.ws : WS[0].id;
+      var lane = LANES[op.lane] ? op.lane : 'later', status = STATUS[op.status] ? op.status : 'ns';
+      var priority = PRIORITY[op.priority] ? op.priority : 'med', type = TYPES[op.type] ? op.type : (WS_TYPE[ws] || 'dev');
+      var due = /^\d{4}-\d{2}-\d{2}$/.test(op.due || '') ? op.due : '';
+      var owner = Array.isArray(op.owner) ? op.owner.map(function (name) { return String(name).trim().slice(0, 80); }).filter(Boolean).slice(0, 20) : [];
+      var order = state.items.filter(function (i) { return i.lane === lane; }).reduce(function (max, i) { return Math.max(max, Number(i.order) || 0); }, -1) + 1;
+      it = { id: id, ws: ws, type: type, owner: owner, status: status, due: due, title: title, next: String(op.next || '').trim().slice(0, 2000), lane: lane, priority: priority,
+        order: order, agreed: false, blocker: '', evidence: '', result: '', cadence: '', comments: [], attachments: [], history: [{ at: at, by: by, field: 'create', text: 'Created task' }], updatedAt: at };
+      state.items.push(it); addLog(state, at, by, 'Added task: ' + title);
+    } else if (op.t === 'set' && it) {
       Object.keys(op.fields || {}).forEach(function (k) {
         if (EDITABLE.indexOf(k) < 0) return;
         var v = op.fields[k];
