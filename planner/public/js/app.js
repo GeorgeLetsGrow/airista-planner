@@ -341,6 +341,8 @@ ${u.email === St.user.email ? '<span class="urm"></span>' : `<button class="ibtn
     const kd = t.closest('[data-kwdel]'); if (kd) { const id = kd.closest('[data-kw]').dataset.kw, k = C.ensureReports(St.state).keywords.find(x => x.id === id); if (k) confirmBox(`Stop tracking "${k.keyword}"?`, 'Its position history is removed.', 'Remove').then(ok => ok && St.dispatch({ t: 'kw-del', id })); return; }
     if (t.closest('#export')) return St.exportJSON();
     if (t === scrim || t.closest('[data-close]')) return closeDrawer();
+    const taskClose = t.closest('[data-task-close]');
+    if (taskClose && ui.drawerId) return setStatus(ui.drawerId, taskClose.dataset.taskClose === '1' ? 'co' : 'ip');
     if (t.closest('[data-share-task]')) {
       const url = pageUrl(ui.drawerId).href;
       navigator.clipboard.writeText(url).then(() => { t.closest('[data-share-task]').textContent = 'Link copied'; }).catch(() => prompt('Copy this task link:', url));

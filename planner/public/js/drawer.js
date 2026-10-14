@@ -10,7 +10,7 @@ window.Drawer = (() => {
     const ev = it.evidence;
     const attachments = Array.isArray(it.attachments) ? it.attachments : [];
     const fileSize = n => n < 1024 ? `${n} B` : n < 1048576 ? `${Math.round(n / 1024)} KB` : `${(n / 1048576).toFixed(1)} MB`;
-    return `<div class="dr-head"><div><span class="label" style="color:var(--orange-600)">${esc(V.wsName(it.ws))}</span><h2>${esc(it.title)}</h2></div><div class="dr-head-actions"><button class="btn sm" type="button" data-share-task title="Copy a direct link to this task">Copy link</button><button class="ibtn" type="button" data-close aria-label="Close">${U.ICON.close}</button></div></div>
+    return `<div class="dr-head"><div><span class="label" style="color:var(--orange-600)">${esc(V.wsName(it.ws))}</span><h2>${esc(it.title)}</h2></div><div class="dr-head-actions"><button class="btn sm ${it.status === 'co' ? '' : 'primary'}" type="button" data-task-close="${it.status === 'co' ? '0' : '1'}">${it.status === 'co' ? 'Reopen task' : 'Close task'}</button><button class="btn sm" type="button" data-share-task title="Copy a direct link to this task">Copy link</button><button class="ibtn" type="button" data-close aria-label="Close details">${U.ICON.close}</button></div></div>
 <div class="dr-body">
 <div class="fgrid">
 <label class="f full"><span class="label">Title</span><input type="text" data-f="title" value="${esc(it.title)}" maxlength="200" placeholder="Task title"></label>

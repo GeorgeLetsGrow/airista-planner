@@ -122,7 +122,8 @@ function migrate(state, meta) {
   });
   state.items.forEach(function (item) { if (!Array.isArray(item.attachments)) { item.attachments = []; changed = true; } });
   if (!Array.isArray(state.notifications)) { state.notifications = []; changed = true; }
-  if (changed) { state.version = Math.max(5, Number(state.version) || 0); state.updatedAt = at; }
+  if (!state.monthHistory || typeof state.monthHistory !== 'object' || Array.isArray(state.monthHistory)) { state.monthHistory = {}; changed = true; }
+  if (changed) { state.version = Math.max(6, Number(state.version) || 0); state.updatedAt = at; }
   return changed;
 }
 
@@ -136,6 +137,13 @@ function fmtVal(f, v) {
   return v === '' || v == null ? '(empty)' : String(v);
 }
 function addLog(s, at, by, text) { s.log.unshift({ at: at, by: by, text: text }); if (s.log.length > 400) s.log.length = 400; }
+function monthSnapshot(state, period, at, by) {
+  var taskCounts = { ns: 0, ip: 0, nv: 0, bl: 0, co: 0 };
+  state.items.forEach(function (item) { if (taskCounts[item.status] !== undefined) taskCounts[item.status]++; });
+  var counters = {};
+  Object.keys(state.counters || {}).forEach(function (key) { counters[key] = { label: state.counters[key].label, done: state.counters[key].done, target: state.counters[key].target }; });
+  return { period: period, at: at, by: by, tasks: taskCounts, hours: { used: state.hours.used, month: state.hours.month }, counters: counters };
+}
 
 // ---- SEO reporting ----
 // Monthly figures are typed in from Search Console, GA4 and the backlink tool. Nothing is pre-filled.
@@ -268,6 +276,8 @@ function applyOps(state, ops, meta) {
     } else if (op.t === 'note' && /^\d{4}-\d{2}-\d{2}$/.test(op.date)) {
       state.notes[op.date] = { text: String(op.text || '').slice(0, 20000), at: at, by: by };
     } else if (op.t === 'period' && /^\d{4}-\d{2}$/.test(op.period) && op.period !== state.period) {
+      if (!state.monthHistory || typeof state.monthHistory !== 'object' || Array.isArray(state.monthHistory)) state.monthHistory = {};
+      state.monthHistory[state.period] = monthSnapshot(state, state.period, at, by);
       addLog(state, at, by, 'Started ' + (op.label || op.period) + ': monthly counters and support hours reset');
       state.period = op.period; state.hours.used = 0;
       Object.keys(state.counters).forEach(function (k) { state.counters[k].done = 0; });

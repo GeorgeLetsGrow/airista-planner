@@ -61,8 +61,17 @@ ${it.blocker ? `<div class="tc-block">${esc(it.blocker)}</div>` : ''}
     const nextP = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}`;
     const label = d => d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
     const h = state.hours, hc = hoursCls(h.used, h.month);
+    const liveCounts = counts(state.items), liveSnapshot = { period: per, tasks: liveCounts, hours: h, current: true };
+    const history = [...Object.values(state.monthHistory || {}), liveSnapshot].sort((a, b) => b.period.localeCompare(a.period));
+    const historyCards = history.map(snapshot => {
+      const taskCounts = snapshot.tasks || {}, total = Object.values(taskCounts).reduce((sum, value) => sum + Number(value || 0), 0), done = Number(taskCounts.co || 0);
+      const pct = total ? Math.round(done / total * 100) : 0, monthDate = new Date(`${snapshot.period}-01T12:00:00`);
+      return `<article class="mh-card ${snapshot.current ? 'current' : ''}"><div class="mh-top"><div><span class="label">${snapshot.current ? 'Current month' : 'Saved month'}</span><h3>${label(monthDate)}</h3></div><b>${pct}%</b></div>
+<div class="mh-progress"><i style="width:${pct}%"></i></div><div class="mh-stats"><span><b>${done}</b> of ${total} tasks complete</span><span><b>${snapshot.hours?.used || 0}</b> of ${snapshot.hours?.month || h.month} support h</span></div></article>`;
+    }).join('');
     return `<div class="vhead"><div><h1>Workstreams</h1><p>Monthly counters and support hours for ${label(new Date(y, m - 1, 1))}.</p></div>
 <button class="btn" type="button" id="new-period" data-period="${nextP}" data-label="${label(next)}">Start ${label(next)}</button></div>
+<section class="month-history"><div class="panel-h"><div><h2>Monthly progress history</h2><p>Each month is saved when the next month starts.</p></div></div><div class="mh-list">${historyCards}</div></section>
 <div class="wsgrid">${C.WS.map((w, n) => {
       const items = state.items.filter(i => i.ws === w.id), c = counts(items);
       const ex = [];
