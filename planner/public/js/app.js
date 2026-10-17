@@ -56,9 +56,44 @@
   }
 
   function pageUrl(taskId) { const url = new URL(location.href); url.searchParams.delete('google'); if (taskId) url.searchParams.set('task', taskId); else url.searchParams.delete('task'); return url; }
-  function setView(v) { ui.view = v; const url = pageUrl(ui.drawerId); url.hash = v; history.replaceState(null, '', url.pathname + url.search + url.hash); persist(); render(); window.scrollTo(0, 0); if (v === 'reports' && ui.rptTab === 'health') openReportTab(); }
-  function openItem(id) { if (!St.state?.items.some(i => i.id === id)) return; ui.drawerId = id; ui.tab = 'comments'; const url = pageUrl(id); history.replaceState(null, '', url.pathname + url.search + url.hash); renderDrawer(); }
-  function closeDrawer() { ui.drawerId = null; const url = pageUrl(); history.replaceState(null, '', url.pathname + url.search + url.hash); renderDrawer(); document.querySelectorAll('.tcard.sel').forEach(c => c.classList.remove('sel')); }
+  const historyUrl = url => url.pathname + url.search + url.hash;
+  const historyState = (task, guard = false) => ({ planner: true, guard, view: ui.view, task: task || null });
+  function initPlannerHistory() {
+    const current = pageUrl(ui.drawerId), root = pageUrl();
+    root.hash = current.hash = ui.view;
+    history.replaceState(historyState(null, true), '', historyUrl(root));
+    history.pushState(historyState(ui.drawerId), '', historyUrl(current));
+  }
+  function setView(v) {
+    if (ui.view === v) return;
+    ui.view = v; const url = pageUrl(ui.drawerId); url.hash = v;
+    history.pushState(historyState(ui.drawerId), '', historyUrl(url));
+    persist(); render(); window.scrollTo(0, 0); if (v === 'reports' && ui.rptTab === 'health') openReportTab();
+  }
+  function openItem(id) {
+    if (!St.state?.items.some(i => i.id === id)) return;
+    const replacing = !!ui.drawerId;
+    ui.drawerId = id; ui.tab = 'comments'; const url = pageUrl(id);
+    history[replacing ? 'replaceState' : 'pushState'](historyState(id), '', historyUrl(url));
+    renderDrawer();
+  }
+  function closeDrawer() {
+    if (history.state?.planner && history.state.task) return history.back();
+    ui.drawerId = null; const url = pageUrl();
+    history.pushState(historyState(null), '', historyUrl(url));
+    renderDrawer(); document.querySelectorAll('.tcard.sel').forEach(c => c.classList.remove('sel'));
+  }
+  initPlannerHistory();
+  window.addEventListener('popstate', event => {
+    if (!event.state?.planner) return;
+    ui.view = event.state.view || location.hash.slice(1) || 'focus';
+    ui.drawerId = event.state.task || null;
+    ui.tab = 'comments'; persist(); render(); window.scrollTo(0, 0);
+    if (event.state.guard) {
+      const url = pageUrl(ui.drawerId); url.hash = ui.view;
+      history.pushState(historyState(ui.drawerId), '', historyUrl(url));
+    }
+  });
 
   function showModal(html) { modal.innerHTML = `<div class="mbox" role="dialog" aria-modal="true">${html}</div>`; modal.hidden = false; }
   function hideModal() { modal.hidden = true; modal.innerHTML = ''; }
