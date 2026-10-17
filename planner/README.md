@@ -51,6 +51,32 @@ The **Reports → Weekly health** tab replaces the weekly Claude monitoring run 
 ## Dark mode
 The moon/sun button in the header switches themes. The choice is saved per browser; without one, the app follows the operating system setting.
 
+## AI access through MCP
+
+The planner exposes a stateless Streamable HTTP MCP endpoint at `https://<your-site>/api/mcp`. It supports reading the board, finding and inspecting tasks, creating and updating tasks, moving cards, and adding comments. Changes use the same operation engine as the web app, so task history and assignment notifications continue to work.
+
+Add these Netlify environment variables before using it:
+
+- `MCP_API_TOKEN`: a long random bearer token. Keep it secret and rotate it if it is exposed.
+- `MCP_ACTOR`: optional name recorded in task history. Set it to `letsgrowAI`; that is also the server default.
+
+Configure an MCP client with the endpoint and an Authorization header:
+
+```json
+{
+  "mcpServers": {
+    "airista-planner": {
+      "url": "https://airista-planner.netlify.app/api/mcp",
+      "headers": {
+        "Authorization": "Bearer YOUR_MCP_API_TOKEN"
+      }
+    }
+  }
+}
+```
+
+Available tools are `planner_board_summary`, `planner_list_tasks`, `planner_get_task`, `planner_create_task`, `planner_update_task`, `planner_move_task`, and `planner_add_comment`. The endpoint intentionally does not expose task deletion, user administration, attachments, report syncing, or credentials.
+
 ## Data
 - The first request seeds the store from `core.js`. To reset, delete the `airista-planner` store in Netlify, under **Blobs** in the site dashboard. Deleting `airista-auth` resets accounts to the defaults with no passwords.
 - **Export JSON backup** in the footer downloads the current state.
