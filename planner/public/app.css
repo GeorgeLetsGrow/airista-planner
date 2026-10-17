@@ -282,6 +282,7 @@ button.fe{cursor:pointer}button.fe:hover{background:var(--bg-soft)}
 .acct-list{display:flex;flex-direction:column;gap:8px}
 .acct-list .btn{justify-content:flex-start}
 .mbox.wide{width:min(680px,100%);max-height:calc(100vh - 40px);overflow:auto}
+.release-modal{gap:8px}.release-title{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.release-title .label{display:block;margin-bottom:3px}.release-intro{font-size:12.5px;margin-bottom:8px}.release-list{display:flex;flex-direction:column}.release-list article{display:grid;grid-template-columns:92px minmax(0,1fr);gap:14px;padding:13px 0;border-top:1px solid var(--border-subtle)}.release-list time{font-size:11.5px;color:var(--text-muted);padding-top:2px}.release-list h3{font-size:13.5px;color:var(--text-heading);margin-bottom:2px}.release-list p{font-size:12.5px;color:var(--text-muted);line-height:1.45}
 .ulist{display:flex;flex-direction:column;border:1px solid var(--border-default);border-radius:14px}
 .urow{display:flex;align-items:center;gap:12px;padding:10px 12px}
 .urow+.urow{border-top:1px solid var(--border-subtle)}
@@ -318,6 +319,7 @@ button.fe{cursor:pointer}button.fe:hover{background:var(--bg-soft)}
 .fgrid{grid-template-columns:1fr}
 .wsgrid{columns:1}
 .foot .r{margin-left:0}
+.release-list article{grid-template-columns:1fr;gap:3px}
 }
 
 /* reports */

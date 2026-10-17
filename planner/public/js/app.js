@@ -97,6 +97,13 @@
 
   function showModal(html) { modal.innerHTML = `<div class="mbox" role="dialog" aria-modal="true">${html}</div>`; modal.hidden = false; }
   function hideModal() { modal.hidden = true; modal.innerHTML = ''; }
+  function showVersionHistory() {
+    const releases = Array.isArray(window.PLANNER_RELEASES) ? window.PLANNER_RELEASES : [];
+    showModal(`<div class="release-title"><div><span class="label">Recent updates</span><h2>Version history</h2></div><button class="ibtn" type="button" data-m="close" aria-label="Close version history">${U.ICON.close}</button></div>
+<p class="muted release-intro">A short record of the latest features and improvements added to the work plan.</p>
+<div class="release-list">${releases.map(entry => `<article><time>${esc(entry.date)}</time><div><h3>${esc(entry.title)}</h3><p>${esc(entry.detail)}</p></div></article>`).join('')}</div>`);
+    modal.querySelector('.mbox').classList.add('wide', 'release-modal');
+  }
   function confirmBox(title, body, okLabel) {
     return new Promise(res => {
       showModal(`<h2>${esc(title)}</h2><p>${esc(body)}</p><div class="acts"><button class="btn" type="button" data-m="0">Cancel</button><button class="btn primary" type="button" data-m="1">${esc(okLabel)}</button></div>`);
@@ -375,6 +382,7 @@ ${u.email === St.user.email ? '<span class="urm"></span>' : `<button class="ibtn
     }
     const kd = t.closest('[data-kwdel]'); if (kd) { const id = kd.closest('[data-kw]').dataset.kw, k = C.ensureReports(St.state).keywords.find(x => x.id === id); if (k) confirmBox(`Stop tracking "${k.keyword}"?`, 'Its position history is removed.', 'Remove').then(ok => ok && St.dispatch({ t: 'kw-del', id })); return; }
     if (t.closest('#export')) return St.exportJSON();
+    if (t.closest('#version-history')) return showVersionHistory();
     if (t === scrim || t.closest('[data-close]')) return closeDrawer();
     const taskClose = t.closest('[data-task-close]');
     if (taskClose && ui.drawerId) return setStatus(ui.drawerId, taskClose.dataset.taskClose === '1' ? 'co' : 'ip');
