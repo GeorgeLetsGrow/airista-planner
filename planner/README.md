@@ -59,6 +59,7 @@ Add these Netlify environment variables before using it:
 
 - `MCP_API_TOKEN`: a long random bearer token. Keep it secret and rotate it if it is exposed.
 - `MCP_ACTOR`: optional name recorded in task history. Set it to `letsgrowAI`; that is also the server default.
+- `MCP_API_TOKENS`: optional JSON object for additional named credentials, for example `{"Nick":"NICKS_UNIQUE_TOKEN"}`. The object key becomes the actor recorded in task history. This works alongside `MCP_API_TOKEN`, so credentials can be revoked independently.
 
 Configure an MCP client with the endpoint and an Authorization header:
 
