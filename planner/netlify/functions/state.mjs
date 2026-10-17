@@ -39,7 +39,13 @@ export default async (req) => {
       const state = cur?.data || core.seed();
       core.migrate(state, { by: "Planner update", at: new Date().toISOString() });
       const previousNotifications = new Set((state.notifications || []).map((n) => n.id));
-      core.applyOps(state, Array.isArray(body.ops) ? body.ops : [], { by, at: new Date().toISOString() });
+      const ops = (Array.isArray(body.ops) ? body.ops : []).filter((op) => {
+        if (op?.t !== "comment-delete") return true;
+        const item = state.items.find((candidate) => candidate.id === op.id);
+        const comment = item?.comments?.find((candidate) => candidate.id === op.commentId);
+        return !!comment && (user.role === "admin" || comment.by === user.name);
+      });
+      core.applyOps(state, ops, { by, at: new Date().toISOString() });
       const res = cur ? await store.setJSON(KEY, state, { onlyIfMatch: cur.etag }) : await store.setJSON(KEY, state, { onlyIfNew: true });
       if (!res || res.modified !== false) {
         const fresh = (state.notifications || []).filter((n) => !previousNotifications.has(n.id));

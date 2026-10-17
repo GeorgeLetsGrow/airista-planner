@@ -75,7 +75,7 @@ Configure an MCP client with the endpoint and an Authorization header:
 }
 ```
 
-Available tools are `planner_board_summary`, `planner_list_tasks`, `planner_get_task`, `planner_create_task`, `planner_update_task`, `planner_move_task`, and `planner_add_comment`. The endpoint intentionally does not expose task deletion, user administration, attachments, report syncing, or credentials.
+Available tools are `planner_board_summary`, `planner_list_tasks`, `planner_get_task`, `planner_create_task`, `planner_update_task`, `planner_move_task`, `planner_add_comment`, and `planner_delete_comment`. The endpoint intentionally does not expose task deletion, user administration, attachment contents, report syncing, or credentials.
 
 ## Data
 - The first request seeds the store from `core.js`. To reset, delete the `airista-planner` store in Netlify, under **Blobs** in the site dashboard. Deleting `airista-auth` resets accounts to the defaults with no passwords.

@@ -10,6 +10,7 @@ test("publishes distinct planner tools", () => {
   assert.equal(new Set(names).size, names.length);
   assert.ok(names.includes("planner_list_tasks"));
   assert.ok(names.includes("planner_create_task"));
+  assert.ok(names.includes("planner_delete_comment"));
 });
 
 test("lists tasks using board filters", () => {
@@ -52,4 +53,21 @@ test("rejects invalid values even when a client bypasses the JSON schema", () =>
     workstream: core.WS[0].id,
     status: "unknown",
   }), /Invalid status/);
+});
+
+test("deletes a comment and its pending mention notifications", () => {
+  const state = freshState();
+  const item = state.items[0];
+  core.applyOps(state, [{ t: "comment", id: item.id, text: "Please review", mentions: ["Katherine"] }], {
+    by: "George", at: "2026-10-17T12:00:00.000Z",
+  });
+  const commentId = item.comments[0].id;
+  assert.ok(state.notifications.some((notification) => notification.commentId === commentId));
+  const execution = executePlannerTool(state, "planner_delete_comment", { id: item.id, commentId });
+  core.applyOps(state, [execution.op], {
+    by: "George", at: "2026-10-17T12:05:00.000Z",
+  });
+  assert.equal(item.comments.length, 0);
+  assert.ok(!state.notifications.some((notification) => notification.commentId === commentId));
+  assert.equal(item.history[0].text, "Deleted a comment");
 });

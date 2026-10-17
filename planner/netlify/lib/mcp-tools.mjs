@@ -128,6 +128,18 @@ export const toolDefinitions = [
       required: ["id", "text"], additionalProperties: false,
     },
   },
+  {
+    name: "planner_delete_comment",
+    description: "Permanently delete a comment from a task. This changes the shared planner and records the deletion in task history.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "string", description: "Task ID." },
+        commentId: { type: "string", description: "Comment ID returned by planner_get_task." },
+      },
+      required: ["id", "commentId"], additionalProperties: false,
+    },
+  },
 ];
 
 export function executePlannerTool(state, name, args = {}) {
@@ -189,6 +201,12 @@ export function executePlannerTool(state, name, args = {}) {
     assert(state.items.some((x) => x.id === clean(args.id, 80)), "Task not found");
     assert(clean(args.text, 4000), "text is required");
     op = { t: "comment", id: clean(args.id, 80), text: clean(args.text, 4000), mentions: asArray(args.mentions) };
+  } else if (name === "planner_delete_comment") {
+    const id = clean(args.id, 80), commentId = clean(args.commentId, 80);
+    const item = state.items.find((x) => x.id === id);
+    assert(item, "Task not found");
+    assert((item.comments || []).some((comment) => comment.id === commentId), "Comment not found");
+    op = { t: "comment-delete", id, commentId };
   } else {
     throw new Error(`Unknown tool: ${name}`);
   }

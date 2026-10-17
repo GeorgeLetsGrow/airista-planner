@@ -251,6 +251,14 @@ function applyOps(state, ops, meta) {
         state.notifications.unshift({ id: 'n' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7), type: 'mention', to: name, by: by, itemId: it.id, commentId: commentId, text: commentText, at: at, read: false });
       });
       if (state.notifications.length > 500) state.notifications.length = 500;
+    } else if (op.t === 'comment-delete' && it) {
+      if (!Array.isArray(it.comments)) it.comments = [];
+      var removedComment = it.comments.find(function (c) { return c.id === op.commentId; });
+      if (removedComment) {
+        it.comments = it.comments.filter(function (c) { return c !== removedComment; });
+        if (Array.isArray(state.notifications)) state.notifications = state.notifications.filter(function (n) { return n.commentId !== removedComment.id; });
+        it.history.unshift({ at: at, by: by, field: 'comment', text: 'Deleted a comment' }); it.updatedAt = at;
+      }
     } else if (op.t === 'notification-read') {
       if (!Array.isArray(state.notifications)) state.notifications = [];
       state.notifications.forEach(function (n) { if (n.id === op.notificationId && n.to === by) n.read = true; });

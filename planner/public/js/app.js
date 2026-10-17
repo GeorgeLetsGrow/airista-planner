@@ -361,6 +361,13 @@ ${u.email === St.user.email ? '<span class="urm"></span>' : `<button class="ibtn
       });
       return;
     }
+    const deleteComment = t.closest('[data-comment-delete]'); if (deleteComment) {
+      const commentId = deleteComment.dataset.commentDelete;
+      confirmBox('Delete this comment?', 'The comment will be permanently removed. The deletion will remain in task history.', 'Delete comment').then(ok => {
+        if (ok) St.dispatch({ t: 'comment-delete', id: ui.drawerId, commentId });
+      });
+      return;
+    }
     const card = t.closest('.tcard'); if (card) return openItem(card.dataset.id);
     const op = t.closest('[data-open]'); if (op) return openItem(op.dataset.open);
     const ctr = t.closest('[data-ctr]'); if (ctr) { const c = St.state.counters[ctr.dataset.ctr]; return St.dispatch({ t: 'counter', key: ctr.dataset.ctr, value: c.done + Number(ctr.dataset.d) }); }
