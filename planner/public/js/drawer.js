@@ -4,7 +4,7 @@ window.Drawer = (() => {
   function render(state, ui) {
     const it = state.items.find(i => i.id === ui.drawerId);
     if (!it) return '';
-    const lane = state.items.filter(i => i.lane === it.lane).sort((a, b) => a.order - b.order), idx = lane.indexOf(it);
+    const lane = state.items.filter(i => i.lane === it.lane && i.status !== 'co').sort((a, b) => a.order - b.order), idx = lane.indexOf(it);
     const seg = (f, opts, cur) => `<div class="seg" data-seg="${f}">${opts.map(([v, l]) => `<button type="button" data-v="${v}" class="${String(cur) === String(v) ? 'on' : ''}">${l}</button>`).join('')}</div>`;
     const people = [...new Set([...window.Store.people, ...it.owner])];
     const ev = it.evidence;
@@ -17,7 +17,7 @@ window.Drawer = (() => {
 <div class="f full"><span class="label">Type</span>${seg('type', Object.entries(C.TYPES), C.typeOf(it))}</div>
 <label class="f"><span class="label">Status</span><select data-f="status">${Object.entries(C.STATUS).map(([k, l]) => `<option value="${k}" ${k === it.status ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
 <div class="f"><span class="label">Priority</span>${seg('priority', Object.entries(C.PRIORITY), it.priority)}</div>
-<div class="f full"><span class="label">Lane</span><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">${seg('lane', Object.entries(C.LANES), it.lane)}<span class="rankrow">#${idx + 1} of ${lane.length}<button class="ibtn" type="button" data-rank="up" ${idx === 0 ? 'disabled' : ''} aria-label="Move up">↑</button><button class="ibtn" type="button" data-rank="down" ${idx === lane.length - 1 ? 'disabled' : ''} aria-label="Move down">↓</button></span></div></div>
+<div class="f full"><span class="label">Lane</span><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">${seg('lane', Object.entries(C.LANES), it.lane)}${it.status === 'co' ? '<span class="rankrow">Shown in Completed</span>' : `<span class="rankrow">#${idx + 1} of ${lane.length}<button class="ibtn" type="button" data-rank="up" ${idx === 0 ? 'disabled' : ''} aria-label="Move up">↑</button><button class="ibtn" type="button" data-rank="down" ${idx === lane.length - 1 ? 'disabled' : ''} aria-label="Move down">↓</button></span>`}</div></div>
 <div class="f full"><span class="label">Owner</span><div class="ownchips">${people.map(p => `<button type="button" data-owner="${esc(p)}" class="${it.owner.includes(p) ? 'on' : ''}">${U.av(p)}${esc(p)}</button>`).join('')}</div></div>
 <label class="f"><span class="label">Target date</span><input type="date" data-f="due" value="${esc(it.due)}"></label>
 <div class="f"><span class="label">Date</span>${seg('agreed', [['0', 'Proposed'], ['1', 'Agreed']], it.agreed ? 1 : 0)}</div>

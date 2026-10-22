@@ -31,11 +31,12 @@ ${it.blocker ? `<div class="tc-block">${esc(it.blocker)}</div>` : ''}
 
   function focus(state, list) {
     return `<div class="vhead"><div><h1>Priorities</h1><p>Drag cards between lanes and up or down to set the order you'll work in.</p></div></div>
-<div class="cols lanes">${Object.keys(C.LANES).map(l => {
-      const L = list.filter(i => i.lane === l).sort((a, b) => a.order - b.order);
+<div class="cols lanes">${[...Object.keys(C.LANES), 'completed'].map(l => {
+      const completed = l === 'completed';
+      const L = list.filter(i => completed ? i.status === 'co' : i.lane === l && i.status !== 'co').sort((a, b) => a.order - b.order);
       const hi = L.filter(i => i.priority === 'high' && i.status !== 'co').length;
-      return `<section class="col"><div class="col-h"><h3>${C.LANES[l]}</h3><span class="n">${L.length}</span>${hi ? `<span class="sub">${hi} high priority</span>` : ''}</div>
-<div class="drop" data-lane="${l}">${L.map((i, n) => card(i, n + 1)).join('') || empty('Drop deliverables here')}</div></section>`;
+      return `<section class="col${completed ? ' completed-col' : ''}"><div class="col-h"><h3>${completed ? 'Completed' : C.LANES[l]}</h3><span class="n">${L.length}</span>${hi ? `<span class="sub">${hi} high priority</span>` : ''}</div>
+<div class="drop" ${completed ? 'data-status="co"' : `data-lane="${l}"`}>${L.map((i, n) => card(i, n + 1)).join('') || empty(completed ? 'Drop completed work here' : 'Drop deliverables here')}</div></section>`;
     }).join('')}</div>`;
   }
 

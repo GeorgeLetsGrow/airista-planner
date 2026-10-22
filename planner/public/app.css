@@ -110,9 +110,10 @@ main{flex:1;padding:24px var(--page-pad) 40px;width:100%}
 
 /* lanes / board */
 .cols{display:grid;gap:16px;align-items:start}
-.cols.lanes{grid-template-columns:repeat(3,minmax(0,1fr))}
+.cols.lanes{grid-template-columns:repeat(4,minmax(0,1fr))}
 .cols.board{grid-template-columns:repeat(5,minmax(260px,1fr));overflow-x:auto;padding-bottom:8px}
 .col{background:#eef0f6;border-radius:18px;padding:12px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.completed-col{background:#edf5f0}
 .col-h{display:flex;align-items:center;gap:10px;padding:4px 6px 2px}
 .col-h h3{font-size:15px;letter-spacing:-.01em}
 .col-h .n{font-size:12px;font-weight:600;color:var(--text-muted);background:var(--white);border-radius:var(--radius-pill);padding:1px 8px}

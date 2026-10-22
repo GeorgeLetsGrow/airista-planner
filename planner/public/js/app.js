@@ -430,7 +430,7 @@ ${u.email === St.user.email ? '<span class="urm"></span>' : `<button class="ibtn
     }
     const ow = t.closest('[data-owner]'); if (ow) { const p = ow.dataset.owner, cur = it.owner; return St.dispatch({ t: 'set', id, fields: { owner: cur.includes(p) ? cur.filter(x => x !== p) : [...cur, p] } }); }
     const rk = t.closest('[data-rank]'); if (rk) {
-      const lane = St.state.items.filter(i => i.lane === it.lane).sort((a, b) => a.order - b.order), idx = lane.indexOf(it);
+      const lane = St.state.items.filter(i => i.lane === it.lane && i.status !== 'co').sort((a, b) => a.order - b.order), idx = lane.indexOf(it);
       const before = rk.dataset.rank === 'up' ? lane[idx - 1] : lane[idx + 2];
       return St.dispatch({ t: 'place', id, lane: it.lane, before: before ? before.id : null });
     }
@@ -538,7 +538,10 @@ ${u.email === St.user.email ? '<span class="urm"></span>' : `<button class="ibtn
     if (drop.dataset.lane) {
       let n = ph.nextElementSibling; while (n && (!n.classList.contains('tcard') || n.dataset.id === id)) n = n.nextElementSibling;
       ph.remove();
-      St.dispatch({ t: 'place', id, lane: drop.dataset.lane, before: n ? n.dataset.id : null });
+      const item = St.state.items.find(i => i.id === id);
+      const ops = [{ t: 'place', id, lane: drop.dataset.lane, before: n ? n.dataset.id : null }];
+      if (item?.status === 'co') ops.push({ t: 'set', id, fields: { status: 'ns' } });
+      St.dispatch(ops);
     } else if (drop.dataset.status) { ph.remove(); setStatus(id, drop.dataset.status); }
   });
 
